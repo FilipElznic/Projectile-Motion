@@ -31,6 +31,11 @@ export class Ball {
   public color: string;
 
   /**
+   * Whether the ball is currently in motion (physics active)
+   */
+  public isMoving: boolean = false;
+
+  /**
    * Creates a new Ball instance
    * @param x - Initial x position
    * @param y - Initial y position
@@ -63,6 +68,13 @@ export class Ball {
    * @param gravity - Gravity acceleration value
    */
   update(canvasHeight: number, gravity: number): void {
+    // Only apply physics if the ball is in motion
+    if (!this.isMoving) {
+      // Reset velocity when not moving
+      this.velocity.set(0, 0);
+      return;
+    }
+
     // Apply gravity to vertical velocity
     this.velocity.y += gravity;
 
