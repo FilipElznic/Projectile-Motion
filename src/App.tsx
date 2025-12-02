@@ -1,7 +1,74 @@
-import { Simulation } from "./components/Simulation";
+import { GravitySimulation } from "./components/GravitySimulation";
+import { DragSimulation } from "./components/DragSimulation";
+import { CollisionSimulation } from "./components/CollisionSimulation";
 import { Button3D } from "./components/Button3D";
 import { Card } from "./components/Card";
-import { Play, Trophy, Target, Zap, Settings, Info, Star } from "lucide-react";
+import {
+  Play,
+  Trophy,
+  Target,
+  Zap,
+  Settings,
+  Info,
+  Star,
+  ArrowDown,
+  Move,
+  RefreshCw,
+} from "lucide-react";
+
+const SimulationContainer = ({
+  children,
+  title,
+  description,
+  icon: Icon,
+  color = "bg-[#DEB887]",
+  borderColor = "border-[#c19a6b]",
+}: {
+  children: React.ReactNode;
+  title: string;
+  description: string;
+  icon: any;
+  color?: string;
+  borderColor?: string;
+}) => (
+  <div className="mb-24">
+    <div className="text-center mb-8">
+      <div className="inline-flex items-center justify-center p-4 bg-white rounded-full shadow-lg mb-4">
+        <Icon className="w-8 h-8 text-slate-700" strokeWidth={3} />
+      </div>
+      <h2 className="text-4xl md:text-5xl font-black text-white drop-shadow-md mb-2">
+        {title}
+      </h2>
+      <p className="text-xl text-white/90 font-bold max-w-2xl mx-auto">
+        {description}
+      </p>
+    </div>
+
+    <div className="relative mx-auto max-w-5xl">
+      <div
+        className={`${color} p-4 md:p-6 rounded-[3rem] shadow-[0_20px_0_rgba(0,0,0,0.2)] border-b-[16px] ${borderColor}`}
+      >
+        <div className="bg-slate-900 rounded-[2rem] overflow-hidden border-8 border-slate-800 shadow-inner relative h-[400px] md:h-[500px]">
+          {children}
+        </div>
+
+        {/* Decorative Screws */}
+        <div
+          className={`absolute top-6 left-6 w-4 h-4 rounded-full ${borderColor} shadow-inner opacity-50`}
+        ></div>
+        <div
+          className={`absolute top-6 right-6 w-4 h-4 rounded-full ${borderColor} shadow-inner opacity-50`}
+        ></div>
+        <div
+          className={`absolute bottom-8 left-6 w-4 h-4 rounded-full ${borderColor} shadow-inner opacity-50`}
+        ></div>
+        <div
+          className={`absolute bottom-8 right-6 w-4 h-4 rounded-full ${borderColor} shadow-inner opacity-50`}
+        ></div>
+      </div>
+    </div>
+  </div>
+);
 
 function App() {
   return (
@@ -34,48 +101,59 @@ function App() {
               MOTION
             </span>
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 font-bold max-w-2xl mx-auto drop-shadow-md">
+          <p className="text-xl md:text-2xl text-white/90 font-bold max-w-2xl mx-auto drop-shadow-md mb-8">
             Master the physics of flight in this interactive playground!
           </p>
 
-          <div className="mt-8 flex justify-center gap-6">
+          <div className="flex justify-center gap-6">
             <Button3D variant="primary">
               <span className="flex items-center gap-2">
-                <Play fill="currentColor" /> Play Now
-              </span>
-            </Button3D>
-            <Button3D variant="secondary">
-              <span className="flex items-center gap-2">
-                <Trophy /> Leaderboard
+                <Play fill="currentColor" /> Start Learning
               </span>
             </Button3D>
           </div>
         </div>
 
-        {/* Game Container (TV Style) */}
-        <div className="relative mx-auto max-w-5xl mb-24">
-          <div className="bg-[#DEB887] p-4 md:p-6 rounded-[3rem] shadow-[0_20px_0_rgba(92,64,51,0.3)] border-b-[16px] border-[#c19a6b]">
-            <div className="bg-slate-900 rounded-[2rem] overflow-hidden border-8 border-slate-800 shadow-inner relative h-[500px] md:h-[600px]">
-              <Simulation />
+        {/* Section 1: Gravity */}
+        <SimulationContainer
+          title="1. Gravity & Acceleration"
+          description="Observe how constant acceleration affects vertical velocity. The ball accelerates downward until it hits the floor."
+          icon={ArrowDown}
+          color="bg-[#4ECDC4]"
+          borderColor="border-[#3b9c95]"
+        >
+          <GravitySimulation />
+        </SimulationContainer>
 
-              {/* Overlay UI */}
-              <div className="absolute top-6 left-6 pointer-events-none">
-                <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border-2 border-white/20 text-white">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Star className="w-5 h-5 text-[#FFCE00] fill-[#FFCE00]" />
-                    <span className="font-black text-lg">SCORE: 0</span>
-                  </div>
-                </div>
+        {/* Section 2: Drag & Shoot */}
+        <SimulationContainer
+          title="2. Projectile Motion"
+          description="Combine horizontal velocity with vertical gravity. Drag the ball to launch it!"
+          icon={Move}
+          color="bg-[#FF6B6B]"
+          borderColor="border-[#c44d4d]"
+        >
+          <DragSimulation />
+          <div className="absolute top-6 left-6 pointer-events-none">
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border-2 border-white/20 text-white">
+              <div className="flex items-center gap-2 mb-1">
+                <Star className="w-5 h-5 text-[#FFCE00] fill-[#FFCE00]" />
+                <span className="font-black text-lg">TRY IT!</span>
               </div>
             </div>
-
-            {/* Decorative Screws */}
-            <div className="absolute top-6 left-6 w-4 h-4 rounded-full bg-[#c19a6b] shadow-inner"></div>
-            <div className="absolute top-6 right-6 w-4 h-4 rounded-full bg-[#c19a6b] shadow-inner"></div>
-            <div className="absolute bottom-8 left-6 w-4 h-4 rounded-full bg-[#c19a6b] shadow-inner"></div>
-            <div className="absolute bottom-8 right-6 w-4 h-4 rounded-full bg-[#c19a6b] shadow-inner"></div>
           </div>
-        </div>
+        </SimulationContainer>
+
+        {/* Section 3: Collisions */}
+        <SimulationContainer
+          title="3. Elastic Collisions"
+          description="See how momentum is transferred when objects collide in a zero-gravity environment."
+          icon={RefreshCw}
+          color="bg-[#95E1D3]"
+          borderColor="border-[#7ac0b3]"
+        >
+          <CollisionSimulation />
+        </SimulationContainer>
 
         {/* Bento Grid Features */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">

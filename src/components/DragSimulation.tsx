@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Ball } from "../classes/Ball";
 import { Vector2 } from "../classes/Vector2";
 
-export const Simulation = () => {
+export const DragSimulation = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
