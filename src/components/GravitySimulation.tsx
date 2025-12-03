@@ -15,6 +15,7 @@ export const GravitySimulation = () => {
     let world: PhysicsWorld;
     let ball: Ball;
     let animationFrameId: number;
+    const groundHeight = 32;
 
     const init = () => {
       const parent = canvas.parentElement;
@@ -25,15 +26,17 @@ export const GravitySimulation = () => {
 
       world = new PhysicsWorld();
 
-      // Create floor
+      const groundY = canvas.height - groundHeight / 2;
+
+      // Create floor collider that matches the drawn ground strip
       const floor = new PhysicsBody({
-        position: new Vector2(canvas.width / 2, canvas.height - 10),
+        position: new Vector2(canvas.width / 2, groundY),
         type: "rectangle",
         width: canvas.width,
-        height: 20,
+        height: groundHeight,
         isStatic: true,
         restitution: 0.5,
-        friction: 0.5,
+        friction: 0.6,
       });
       world.addBody(floor);
 
@@ -46,12 +49,37 @@ export const GravitySimulation = () => {
     const loop = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Sky background
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, "#0e1424");
+      gradient.addColorStop(1, "#1f2d47");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       // Step physics
       world.step(1 / 60);
 
-      // Draw floor
-      ctx.fillStyle = "#2d3748";
-      ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+      // Extra clamp to ensure the ball never sinks past the ground when frame dips
+      const floorTop = canvas.height - groundHeight;
+      if (ball.body.position.y > floorTop - ball.radius) {
+        ball.body.position.y = floorTop - ball.radius;
+        if (ball.body.velocity.y > 0) {
+          ball.body.velocity.y *= -ball.body.restitution;
+        }
+      }
+
+      // Draw floor / ground strip
+      ctx.fillStyle = "#1b6b3b";
+      ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+      ctx.fillStyle = "#254b2d";
+      ctx.fillRect(
+        0,
+        canvas.height - groundHeight / 2,
+        canvas.width,
+        groundHeight / 2
+      );
+      ctx.fillStyle = "#4c2f1e";
+      ctx.fillRect(0, canvas.height - 4, canvas.width, 4);
 
       ball.draw(ctx);
 
@@ -59,7 +87,7 @@ export const GravitySimulation = () => {
       if (
         Math.abs(ball.body.velocity.y) < 0.5 &&
         Math.abs(ball.body.velocity.x) < 0.5 &&
-        ball.body.position.y > canvas.height - ball.radius - 30
+        ball.body.position.y > canvas.height - groundHeight - ball.radius
       ) {
         // Give it a random small push or reset
         // Reduced probability to let it rest longer (approx 3-4 seconds)
@@ -67,7 +95,7 @@ export const GravitySimulation = () => {
           ball.body.velocity.y = -15;
           ball.body.velocity.x = (Math.random() - 0.5) * 20;
           // Wake up if sleeping (not implemented yet, but good practice)
-          ball.body.isStatic = false;
+          ball.body.setStatic(false);
         }
       }
 

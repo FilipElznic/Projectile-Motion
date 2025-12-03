@@ -1,7 +1,10 @@
 import { useEffect, useRef } from "react";
-import { Ball } from "../classes/Ball";
 import { Vector2 } from "../classes/Vector2";
-import { PhysicsWorld, PhysicsBody } from "../classes/PhysicsEngine";
+import { ProjectileSimulator } from "../physics/ProjectileSimulator";
+
+const MAX_DRAG_DISTANCE = 220;
+const LAUNCH_MULTIPLIER = 6.4;
+const PATH_POINTS = 90;
 
 export const DragSimulation = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -9,153 +12,286 @@ export const DragSimulation = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Physics constants
-    const LAUNCH_POWER = 0.15;
-    const MAX_DRAG_DISTANCE = 150;
+    const parent = canvas.parentElement;
 
-    // State
-    let world: PhysicsWorld;
-    let ball: Ball;
-    let isDragging = false;
-    let startPos: Vector2;
-    let animationFrameId: number;
+    const state = {
+      simulator: null as ProjectileSimulator | null,
+      startPos: new Vector2(0, 0),
+      groundY: 0,
+      isDragging: false,
+      dragVector: new Vector2(0, 0),
+      path: [] as Vector2[],
+      restTimer: 0,
+      hasLaunched: false,
+      lastTime: performance.now(),
+      animationFrameId: 0,
+    };
 
-    // Initialize
-    const init = () => {
-      // Set canvas size to parent container
-      const parent = canvas.parentElement;
+    const resize = () => {
       if (parent) {
         canvas.width = parent.clientWidth;
         canvas.height = parent.clientHeight;
       }
 
-      world = new PhysicsWorld();
+      state.groundY = canvas.height - 26;
+      state.startPos = new Vector2(canvas.width * 0.2, state.groundY - 140);
 
-      // Create floor
-      const floor = new PhysicsBody({
-        position: new Vector2(canvas.width / 2, canvas.height - 10),
-        type: "rectangle",
-        width: canvas.width,
-        height: 20,
-        isStatic: true,
-        restitution: 0.5,
-        friction: 0.5,
-      });
-      world.addBody(floor);
-
-      // Set starting position
-      startPos = new Vector2(150, canvas.height - 150);
-
-      // Initialize ball
-      ball = new Ball(startPos.x, startPos.y, 20, "#ffffff");
-      ball.body.isStatic = true; // Start static
-      world.addBody(ball.body);
-    };
-
-    // Game Loop
-    const loop = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      world.step(1 / 60);
-
-      // Draw floor
-      ctx.fillStyle = "#2d3748";
-      ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
-
-      // Draw slingshot
-      if (isDragging) {
-        ctx.save();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-        ctx.lineWidth = 3;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath();
-        ctx.moveTo(startPos.x, startPos.y);
-        ctx.lineTo(ball.body.position.x, ball.body.position.y);
-        ctx.stroke();
-        ctx.restore();
+      if (!state.simulator) {
+        state.simulator = new ProjectileSimulator({
+          startPosition: state.startPos,
+          groundY: state.groundY,
+          radius: 22,
+          gravity: 1500,
+          restitution: 0.6,
+          airDrag: 0.018,
+        });
+      } else {
+        state.simulator.setGround(state.groundY);
+        state.simulator.setStartPosition(state.startPos);
       }
 
-      // Draw Ball
-      ball.draw(ctx);
-
-      // Reset if out of bounds
-      if (
-        ball.body.position.x > canvas.width + 50 ||
-        ball.body.position.y > canvas.height + 50
-      ) {
-        // Reset
-        ball.body.position = startPos.copy();
-        ball.body.velocity.set(0, 0);
-        ball.body.angularVelocity = 0;
-        ball.body.angle = 0;
-        ball.body.isStatic = true;
-      }
-
-      animationFrameId = requestAnimationFrame(loop);
+      state.simulator.reset();
+      state.path = [];
+      state.hasLaunched = false;
+      state.dragVector.set(0, 0);
     };
 
-    // Event Handlers
-    const handleMouseDown = (e: MouseEvent) => {
+    const getMousePos = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const mousePos = new Vector2(e.clientX - rect.left, e.clientY - rect.top);
-      const distance = Vector2.dist(mousePos, ball.body.position);
+      return new Vector2(e.clientX - rect.left, e.clientY - rect.top);
+    };
 
-      if (distance <= ball.radius + 40) {
-        // Increased hit area
-        isDragging = true;
-        ball.body.isStatic = true; // Make static while dragging
-        ball.body.velocity.set(0, 0);
+    const updateDrag = (mouse: Vector2) => {
+      if (!state.simulator) return;
+
+      const dragVector = Vector2.sub(mouse, state.startPos);
+      if (dragVector.mag() > MAX_DRAG_DISTANCE) {
+        dragVector.setMag(MAX_DRAG_DISTANCE);
+      }
+
+      const newPos = Vector2.add(state.startPos, dragVector);
+      state.simulator.holdAt(newPos);
+      state.dragVector = dragVector;
+      state.hasLaunched = false;
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (!state.simulator) return;
+      const mouse = getMousePos(e);
+      const distance = Vector2.dist(mouse, state.simulator.position);
+      if (distance <= state.simulator.radius + 30) {
+        state.isDragging = true;
+        state.path = [];
+        updateDrag(mouse);
       }
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        const rect = canvas.getBoundingClientRect();
-        const mousePos = new Vector2(
-          e.clientX - rect.left,
-          e.clientY - rect.top
-        );
-        const dragVector = Vector2.sub(mousePos, startPos);
-
-        if (dragVector.mag() > MAX_DRAG_DISTANCE) {
-          dragVector.setMag(MAX_DRAG_DISTANCE);
-        }
-
-        ball.body.position = Vector2.add(startPos, dragVector);
-      }
+      if (!state.isDragging) return;
+      updateDrag(getMousePos(e));
     };
 
     const handleMouseUp = () => {
-      if (isDragging) {
-        isDragging = false;
-        ball.body.isStatic = false; // Wake up
+      if (!state.simulator || !state.isDragging) return;
 
-        const force = Vector2.sub(startPos, ball.body.position);
-        const impulse = Vector2.mult(force, LAUNCH_POWER * ball.body.mass);
-        ball.body.applyImpulse(impulse);
+      state.isDragging = false;
+      if (state.dragVector.mag() < 5) {
+        state.simulator.reset();
+        state.hasLaunched = false;
+      } else {
+        state.simulator.launch(
+          state.startPos,
+          state.simulator.position,
+          LAUNCH_MULTIPLIER
+        );
+        state.hasLaunched = true;
+      }
+      state.dragVector.set(0, 0);
+    };
+
+    const renderScene = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, "#1b1f3a");
+      gradient.addColorStop(1, "#060912");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Ground
+      ctx.fillStyle = "#243046";
+      ctx.fillRect(0, state.groundY - 4, canvas.width, 40);
+      ctx.fillStyle = "#3f7f4f";
+      ctx.fillRect(0, state.groundY - 20, canvas.width, 16);
+
+      if (!state.simulator) return;
+      const ballPos = state.simulator.position;
+
+      // Trajectory path
+      if (state.path.length > 1) {
+        ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(state.path[0].x, state.path[0].y);
+        for (let i = 1; i < state.path.length; i++) {
+          ctx.lineTo(state.path[i].x, state.path[i].y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Slingshot posts
+      ctx.strokeStyle = "#4b2c20";
+      ctx.lineWidth = 12;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(state.startPos.x - 16, state.groundY + 12);
+      ctx.lineTo(state.startPos.x - 16, state.startPos.y);
+      ctx.moveTo(state.startPos.x + 16, state.groundY + 12);
+      ctx.lineTo(state.startPos.x + 16, state.startPos.y);
+      ctx.stroke();
+
+      // Elastic band
+      if (state.isDragging) {
+        ctx.strokeStyle = "#d89972";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(state.startPos.x - 12, state.startPos.y + 4);
+        ctx.lineTo(ballPos.x, ballPos.y);
+        ctx.lineTo(state.startPos.x + 12, state.startPos.y + 4);
+        ctx.stroke();
+      }
+
+      // Ball
+      const radius = state.simulator.radius;
+      const ballGradient = ctx.createRadialGradient(
+        ballPos.x - radius * 0.4,
+        ballPos.y - radius * 0.4,
+        radius * 0.5,
+        ballPos.x,
+        ballPos.y,
+        radius
+      );
+      ballGradient.addColorStop(0, "#ffe066");
+      ballGradient.addColorStop(1, "#f06f42");
+
+      ctx.fillStyle = ballGradient;
+      ctx.beginPath();
+      ctx.arc(ballPos.x, ballPos.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#1f1720";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // HUD
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(24, 24, 220, 80);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "600 16px 'Space Grotesk', sans-serif";
+      const speed = state.simulator.velocity.mag();
+      const angle = Math.atan2(
+        -state.simulator.velocity.y,
+        state.simulator.velocity.x
+      );
+      ctx.fillText(`Speed: ${speed.toFixed(0)} px/s`, 40, 55);
+      ctx.fillText(`Angle: ${(angle * (180 / Math.PI)).toFixed(1)}°`, 40, 85);
+
+      if (!state.isDragging && speed < 5) {
+        ctx.fillStyle = "rgba(255,255,255,0.75)";
+        ctx.font = "600 18px 'Space Grotesk', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Click & drag the bird to launch", canvas.width / 2, 60);
+        ctx.textAlign = "left";
+      }
+
+      if (state.isDragging) {
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.font = "600 14px 'Space Grotesk', sans-serif";
+        ctx.fillText(
+          `Launch power: ${state.dragVector.mag().toFixed(0)} px`,
+          ballPos.x + radius + 12,
+          ballPos.y - 10
+        );
       }
     };
 
-    init();
-    loop();
+    const loop = (timestamp: number) => {
+      const dt = Math.min((timestamp - state.lastTime) / 1000, 0.033);
+      state.lastTime = timestamp;
+
+      if (state.simulator && !state.isDragging) {
+        if (state.hasLaunched) {
+          state.simulator.update(dt, {
+            width: canvas.width,
+            height: canvas.height,
+          });
+
+          // Sleep check
+          const speed = state.simulator.velocity.mag();
+          const angSpeed = Math.abs(state.simulator.angularVelocity);
+          const SLEEP_THRESHOLD_LINEAR = 2.0; // pixels/s
+          const SLEEP_THRESHOLD_ANGULAR = 0.1; // rad/s
+          const SLEEP_TIME = 0.5; // seconds
+
+          if (
+            speed < SLEEP_THRESHOLD_LINEAR &&
+            angSpeed < SLEEP_THRESHOLD_ANGULAR
+          ) {
+            state.simulator.sleepTimer += dt;
+            if (state.simulator.sleepTimer > SLEEP_TIME) {
+              state.simulator.isSleeping = true;
+              state.simulator.velocity.set(0, 0);
+              state.simulator.angularVelocity = 0;
+            }
+          } else {
+            state.simulator.sleepTimer = 0;
+            state.simulator.isSleeping = false;
+          }
+
+          if (!state.simulator.isResting()) {
+            state.path.push(state.simulator.position.copy());
+            if (state.path.length > PATH_POINTS) {
+              state.path.shift();
+            }
+            state.restTimer = 0;
+          } else {
+            state.restTimer += dt;
+            if (state.restTimer > 1.5) {
+              state.simulator.reset();
+              state.path = [];
+              state.restTimer = 0;
+              state.hasLaunched = false;
+            }
+          }
+        } else {
+          state.simulator.holdAt(state.startPos);
+          state.path = [];
+          state.restTimer = 0;
+        }
+      }
+
+      renderScene();
+      state.animationFrameId = requestAnimationFrame(loop);
+    };
+
+    resize();
+    state.animationFrameId = requestAnimationFrame(loop);
 
     canvas.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-
-    const handleResize = () => init();
-    window.addEventListener("resize", handleResize);
+    window.addEventListener("resize", resize);
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      cancelAnimationFrame(state.animationFrameId);
       canvas.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", resize);
     };
   }, []);
 

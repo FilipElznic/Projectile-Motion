@@ -1,6 +1,5 @@
 import { GravitySimulation } from "../components/GravitySimulation";
 import { DragSimulation } from "../components/DragSimulation";
-import { CollisionSimulation } from "../components/CollisionSimulation";
 import { Button3D } from "../components/Button3D";
 import { Card } from "../components/Card";
 import { MathBlock } from "../components/MathBlock";
@@ -13,7 +12,6 @@ import {
   Star,
   ArrowDown,
   Move,
-  RefreshCw,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -200,36 +198,6 @@ export const LandingPage = () => {
               </div>
             </div>
           </div>
-        </SimulationContainer>
-
-        {/* Section 3: Collisions */}
-        <SimulationContainer
-          title="3. Elastic Collisions"
-          description="Momentum transfer in a zero-gravity environment."
-          icon={RefreshCw}
-          color="bg-[#95E1D3]"
-          borderColor="border-[#7ac0b3]"
-          mathTitle="Conservation of Momentum"
-          mathContent={
-            <>
-              <p>
-                In a perfectly elastic collision, both momentum and kinetic
-                energy are conserved. When two balls collide, they exchange
-                momentum based on their masses and velocities.
-              </p>
-              <p>
-                Our simulation simplifies this by assuming equal mass, resulting
-                in a direct exchange of velocity components along the collision
-                normal.
-              </p>
-            </>
-          }
-          formulas={[
-            "m_1v_1 + m_2v_2 = m_1v_1' + m_2v_2'",
-            "\\frac{1}{2}m_1v_1^2 + \\frac{1}{2}m_2v_2^2 = \\frac{1}{2}m_1v_1'^2 + \\frac{1}{2}m_2v_2'^2",
-          ]}
-        >
-          <CollisionSimulation />
         </SimulationContainer>
 
         {/* Bento Grid Features */}

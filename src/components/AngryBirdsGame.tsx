@@ -9,6 +9,11 @@ import {
 } from "../classes/PhysicsEngine";
 import { RefreshCw, Trophy, Star } from "lucide-react";
 
+const LAUNCH_POWER = 4.6;
+const MAX_DRAG_DISTANCE = 190;
+const GAME_GRAVITY = 210; // pixels per second^2
+const FLOOR_HEIGHT = 20;
+
 export const AngryBirdsGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
@@ -33,9 +38,6 @@ export const AngryBirdsGame = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const LAUNCH_POWER = 3.0; // Increased for better launch
-    const MAX_DRAG_DISTANCE = 150;
-
     let animationFrameId: number;
 
     const initLevel = () => {
@@ -49,35 +51,38 @@ export const AngryBirdsGame = () => {
       state.status = "aiming";
 
       // Reset world
-      state.world = new PhysicsWorld();
+      state.world = new PhysicsWorld(new Vector2(0, GAME_GRAVITY));
 
       // Position slingshot at 15% width
       state.startPos = new Vector2(canvas.width * 0.15, canvas.height - 150);
 
       // Create Ground
       const ground = new PhysicsBody({
-        position: new Vector2(canvas.width / 2, canvas.height - 10),
+        position: new Vector2(
+          canvas.width / 2,
+          canvas.height - FLOOR_HEIGHT / 2
+        ),
         type: "rectangle",
         width: canvas.width,
-        height: 20,
+        height: FLOOR_HEIGHT,
         isStatic: true,
-        friction: 0.8,
-        restitution: 0.2,
+        friction: 1.0,
+        restitution: 0.1,
       });
+      ground.userData = { type: "floor" };
       state.world.addBody(ground);
 
       // Reset ball
       state.ball = new Ball(state.startPos.x, state.startPos.y, 20, "#D62412");
-      // Ball is initially static until launched? No, we want it to hang or sit.
-      // For simplicity, let's make it static until launch, or just hold it in place.
-      // We'll make it static initially.
-      state.ball.body.isStatic = true;
+      // Keep the bird parked in the sling until the player drags it.
+      state.ball.body.setStatic(true);
+      state.ball.body.position.set(state.startPos.x, state.startPos.y);
       state.world.addBody(state.ball.body);
 
       // Create targets (Level 1 Structure)
       state.targets = [];
       const baseX = canvas.width * 0.75;
-      const floorY = canvas.height - 20; // Top of floor
+      const floorY = canvas.height - FLOOR_HEIGHT; // Top of floor
       const blockSize = 50;
 
       const createTarget = (
@@ -98,7 +103,7 @@ export const AngryBirdsGame = () => {
 
       // Structure 1: Simple Tower
       // Add small gaps (0.1) to prevent initial overlap
-      const gap = 0.5;
+      const gap = 0.0;
 
       // Base stones
       createTarget(
@@ -172,6 +177,8 @@ export const AngryBirdsGame = () => {
       // Setup collision listener
       state.world.onCollision((manifold: CollisionManifold) => {
         const { bodyA, bodyB } = manifold;
+        const typeA = bodyA.userData["type"];
+        const typeB = bodyB.userData["type"];
 
         // Calculate relative velocity magnitude
         // We can approximate impact force by the relative velocity
@@ -183,31 +190,25 @@ export const AngryBirdsGame = () => {
 
         if (relVel > damageThreshold) {
           const damage = relVel * 5;
-          const handleDamage = (body: PhysicsBody) => {
-            if (body.userData["type"] === "target") {
-              const target = body.userData["parent"] as Target;
-              if (target.isHit) return;
+          const applyDamage = (targetBody: PhysicsBody) => {
+            const target = targetBody.userData["parent"] as Target;
+            if (!target || target.isHit) return;
 
-              target.health -= damage;
-
-              // Wake up if sleeping (static)
-              // But we made them dynamic.
-
-              if (target.health <= 0) {
-                target.isHit = true;
-                state.score += target.getScore();
-                setScore(state.score);
-
-                // Remove from world
-                state.world.removeBody(body);
-
-                // Optional: Spawn debris
-              }
+            target.health -= damage;
+            if (target.health <= 0) {
+              target.isHit = true;
+              state.score += target.getScore();
+              setScore(state.score);
+              state.world.removeBody(targetBody);
             }
           };
 
-          handleDamage(bodyA);
-          handleDamage(bodyB);
+          if (typeA === "target" && typeB === "bird") {
+            applyDamage(bodyA);
+          }
+          if (typeB === "target" && typeA === "bird") {
+            applyDamage(bodyB);
+          }
         }
       });
     };
@@ -225,6 +226,44 @@ export const AngryBirdsGame = () => {
       // Use a fixed time step or delta time
       state.world.step(1 / 60);
 
+      const applyFloorClamp = (body: PhysicsBody) => {
+        if (body.isStatic) return;
+
+        const floorTop = canvas.height - FLOOR_HEIGHT;
+        const bottom =
+          body.type === "circle"
+            ? body.position.y + body.radius
+            : body.position.y + body.height / 2;
+
+        if (bottom > floorTop) {
+          const correction = bottom - floorTop;
+          body.position.y -= correction;
+          if (body.velocity.y > 0) {
+            body.velocity.y *= -body.restitution;
+            body.velocity.x *= 0.85;
+            body.angularVelocity *= 0.4;
+          }
+        }
+
+        if (body.userData["type"] === "target") {
+          const restingOnFloor = Math.abs(bottom - floorTop) < 1.5;
+          const slowMotion =
+            Math.abs(body.velocity.x) < 5 && Math.abs(body.velocity.y) < 5;
+          const lowSpin = Math.abs(body.angularVelocity) < 0.8;
+
+          if (restingOnFloor && slowMotion && lowSpin) {
+            body.angularVelocity = 0;
+            // Snap towers upright so they don't look jittery once settled
+            body.angle *= 0.3;
+            if (Math.abs(body.angle) < 0.03) {
+              body.angle = 0;
+            }
+          }
+        }
+      };
+
+      state.world.bodies.forEach(applyFloorClamp);
+
       // Rendering
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const ball = state.ball;
@@ -233,18 +272,26 @@ export const AngryBirdsGame = () => {
 
       // Draw floor
       ctx.fillStyle = "#2d3748"; // slate-800
-      ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+      ctx.fillRect(0, canvas.height - FLOOR_HEIGHT, canvas.width, FLOOR_HEIGHT);
 
       // Draw grass
       ctx.fillStyle = "#48bb78"; // green-500
-      ctx.fillRect(0, canvas.height - 25, canvas.width, 5);
+      ctx.fillRect(0, canvas.height - FLOOR_HEIGHT - 5, canvas.width, 5);
+
+      // Keep bird snapped to sling while aiming
+      if (state.status === "aiming" && !state.isDragging && ball) {
+        ball.body.setStatic(true);
+        ball.body.position.set(state.startPos.x, state.startPos.y);
+        ball.body.velocity.set(0, 0);
+        ball.body.angularVelocity = 0;
+      }
 
       // Draw slingshot (back)
       ctx.strokeStyle = "#5D4037";
       ctx.lineWidth = 8;
       ctx.beginPath();
       ctx.moveTo(state.startPos.x, state.startPos.y);
-      ctx.lineTo(state.startPos.x, canvas.height - 20);
+      ctx.lineTo(state.startPos.x, canvas.height - FLOOR_HEIGHT);
       ctx.stroke();
 
       // Draw slingshot band (back)
@@ -327,6 +374,8 @@ export const AngryBirdsGame = () => {
 
       if (distance <= state.ball.radius + 40) {
         state.isDragging = true;
+        state.ball.body.setStatic(true);
+        state.ball.body.velocity.set(0, 0);
       }
     };
 
@@ -356,7 +405,7 @@ export const AngryBirdsGame = () => {
         state.isDragging = false;
 
         // Launch!
-        state.ball.body.isStatic = false; // Wake up
+        state.ball.body.setStatic(false); // Wake up
 
         const force = Vector2.sub(state.startPos, state.ball.body.position);
         // Impulse = Force * time? No, we just apply an impulse directly.

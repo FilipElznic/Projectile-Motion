@@ -1,5 +1,8 @@
 import { Vector2 } from "./Vector2";
 
+const EARTH_GRAVITY = 9.81;
+const PIXELS_PER_METER = 25; // Tuned so bodies fall at a playable speed
+
 export type ShapeType = "circle" | "rectangle";
 
 export interface PhysicsBodyOptions {
@@ -27,9 +30,9 @@ export class PhysicsBody {
   torque: number;
 
   mass: number;
-  invMass: number;
-  inertia: number;
-  invInertia: number;
+  invMass: number = 0;
+  inertia: number = 0;
+  invInertia: number = 0;
 
   restitution: number;
   friction: number;
@@ -45,6 +48,10 @@ export class PhysicsBody {
   id: number;
   static nextId = 0;
 
+  // Sleep props
+  isSleeping: boolean = false;
+  sleepTimer: number = 0;
+
   // For game logic (HP, etc)
   userData: Record<string, unknown> = {};
 
@@ -58,45 +65,70 @@ export class PhysicsBody {
     this.angularVelocity = 0;
     this.torque = 0;
 
-    this.isStatic = options.isStatic || false;
+    this.type = options.type;
+    this.radius = options.radius ?? 0;
+    this.width = options.width ?? 0;
+    this.height = options.height ?? 0;
 
-    this.mass = options.mass || 1;
-    if (this.isStatic) {
+    this.mass = options.mass ?? 1;
+    this.restitution = options.restitution ?? 0.5;
+    this.friction = options.friction ?? 0.5;
+    this.isStatic = options.isStatic ?? false;
+
+    this.recalculateMassProperties();
+  }
+
+  private recalculateMassProperties() {
+    if (this.isStatic || this.mass === 0) {
       this.invMass = 0;
       this.inertia = 0;
       this.invInertia = 0;
-    } else {
-      this.invMass = this.mass === 0 ? 0 : 1 / this.mass;
-      // Calculate inertia based on shape
-      if (options.type === "circle") {
-        // I = 0.5 * m * r^2
-        this.inertia = 0.5 * this.mass * (options.radius || 1) ** 2;
-      } else {
-        // I = 1/12 * m * (w^2 + h^2)
-        this.inertia =
-          (1 / 12) *
-          this.mass *
-          ((options.width || 1) ** 2 + (options.height || 1) ** 2);
-      }
-      this.invInertia = this.inertia === 0 ? 0 : 1 / this.inertia;
+      return;
     }
 
-    this.restitution = options.restitution ?? 0.5;
-    this.friction = options.friction ?? 0.5;
-    this.type = options.type;
+    this.invMass = 1 / this.mass;
+    if (this.type === "circle") {
+      this.inertia = 0.5 * this.mass * (this.radius || 1) ** 2;
+    } else {
+      this.inertia =
+        (1 / 12) *
+        this.mass *
+        ((this.width || 1) ** 2 + (this.height || 1) ** 2);
+    }
+    this.invInertia = this.inertia === 0 ? 0 : 1 / this.inertia;
+  }
 
-    this.radius = options.radius || 0;
-    this.width = options.width || 0;
-    this.height = options.height || 0;
+  setStatic(isStatic: boolean) {
+    if (this.isStatic === isStatic) return;
+
+    this.isStatic = isStatic;
+
+    if (isStatic) {
+      this.velocity.set(0, 0);
+      this.angularVelocity = 0;
+      this.force.set(0, 0);
+      this.torque = 0;
+    } else {
+      this.wake();
+    }
+
+    this.recalculateMassProperties();
+  }
+
+  wake() {
+    this.isSleeping = false;
+    this.sleepTimer = 0;
   }
 
   applyForce(force: Vector2) {
     if (this.isStatic) return;
+    this.wake();
     this.force.add(force);
   }
 
   applyImpulse(impulse: Vector2, contactVector?: Vector2) {
     if (this.isStatic) return;
+    this.wake();
     this.velocity.add(Vector2.mult(impulse, this.invMass));
 
     if (contactVector) {
@@ -109,7 +141,7 @@ export class PhysicsBody {
 
   // Split integration into velocity and position updates for better stability
   updateVelocity(dt: number, gravity: Vector2) {
-    if (this.isStatic) return;
+    if (this.isStatic || this.isSleeping) return;
 
     // Apply gravity and forces
     this.applyForce(Vector2.mult(gravity, this.mass));
@@ -126,11 +158,30 @@ export class PhysicsBody {
 
     // Damping
     this.velocity.mult(0.995);
-    this.angularVelocity *= 0.98;
+    this.angularVelocity *= 0.9; // Increased damping for stability
+
+    // Sleep check
+    const speed = this.velocity.mag();
+    const angSpeed = Math.abs(this.angularVelocity);
+    const SLEEP_THRESHOLD_LINEAR = 2.0; // pixels/s
+    const SLEEP_THRESHOLD_ANGULAR = 0.1; // rad/s
+    const SLEEP_TIME = 0.5; // seconds
+
+    if (speed < SLEEP_THRESHOLD_LINEAR && angSpeed < SLEEP_THRESHOLD_ANGULAR) {
+      this.sleepTimer += dt;
+      if (this.sleepTimer > SLEEP_TIME) {
+        this.isSleeping = true;
+        this.velocity.set(0, 0);
+        this.angularVelocity = 0;
+      }
+    } else {
+      this.sleepTimer = 0;
+      this.isSleeping = false;
+    }
   }
 
   updatePosition(dt: number) {
-    if (this.isStatic) return;
+    if (this.isStatic || this.isSleeping) return;
 
     this.position.add(Vector2.mult(this.velocity, dt));
     this.angle += this.angularVelocity * dt;
@@ -177,12 +228,16 @@ export interface CollisionManifold {
 
 export class PhysicsWorld {
   bodies: PhysicsBody[] = [];
-  gravity: Vector2 = new Vector2(0, 9.8 * 50); // Scaled gravity (pixels/s^2)
+  gravity: Vector2;
 
   // Event listeners
   collisionListeners: ((manifold: CollisionManifold) => void)[] = [];
 
-  constructor() {}
+  constructor(
+    gravity: Vector2 = new Vector2(0, EARTH_GRAVITY * PIXELS_PER_METER)
+  ) {
+    this.gravity = gravity;
+  }
 
   addBody(body: PhysicsBody) {
     this.bodies.push(body);
@@ -227,12 +282,18 @@ export class PhysicsWorld {
         const bodyB = this.bodies[j];
 
         if (bodyA.isStatic && bodyB.isStatic) continue;
+        if (bodyA.isSleeping && bodyB.isSleeping) continue;
 
         // Simple AABB check optimization could go here
 
         const manifold = this.detectCollision(bodyA, bodyB);
         if (manifold.hasCollision) {
           collisions.push(manifold);
+          // Wake up sleeping bodies if hit by something moving
+          if (!bodyA.isStatic && !bodyA.isSleeping && bodyB.isSleeping)
+            bodyB.wake();
+          if (!bodyB.isStatic && !bodyB.isSleeping && bodyA.isSleeping)
+            bodyA.wake();
         }
       }
     }
@@ -578,17 +639,31 @@ export class PhysicsWorld {
 
     const tangent = Vector2.div(tangentVec, tangentLen);
 
-    const jt = -rv.dot(tangent);
+    // Calculate invMassSumTangent
+    const rAcrossT = rA.x * tangent.y - rA.y * tangent.x;
+    const rBcrossT = rB.x * tangent.y - rB.y * tangent.x;
+
+    let invMassSumTangent = bodyA.invMass + bodyB.invMass;
+    invMassSumTangent += rAcrossT * rAcrossT * bodyA.invInertia;
+    invMassSumTangent += rBcrossT * rBcrossT * bodyB.invInertia;
+
+    // Calculate impulse required to stop motion
+    const jt = -rv.dot(tangent) / invMassSumTangent;
+
     // Friction coefficient
     const mu = Math.sqrt(bodyA.friction * bodyB.friction);
 
     // Clamp friction
-    let frictionImpulse: Vector2;
-    if (Math.abs(jt) < j * mu) {
-      frictionImpulse = Vector2.mult(tangent, jt);
+    let frictionImpulseMag;
+    const maxJt = j * mu;
+
+    if (Math.abs(jt) < maxJt) {
+      frictionImpulseMag = jt;
     } else {
-      frictionImpulse = Vector2.mult(tangent, -j * mu);
+      frictionImpulseMag = jt > 0 ? maxJt : -maxJt;
     }
+
+    const frictionImpulse = Vector2.mult(tangent, frictionImpulseMag);
 
     // Apply friction
     if (!bodyA.isStatic)

@@ -26,32 +26,32 @@ export class Target {
     let mass = 1;
     let health = 10;
     let restitution = 0.2;
-    let friction = 0.5;
+    let friction = 0.0;
 
     // Set properties based on type
     switch (type) {
       case "stone":
         mass = 10;
         health = 100;
-        restitution = 0.1;
-        friction = 0.8;
+        restitution = 0.0;
+
         break;
       case "wood":
         mass = 2;
         health = 40;
-        restitution = 0.2;
-        friction = 0.6;
+        restitution = 0.0;
+
         break;
       case "ice":
         mass = 1;
         health = 15;
-        restitution = 0.1;
-        friction = 0.1;
+        restitution = 0.0;
+
         break;
       case "pig":
         mass = 1.5;
         health = 5;
-        restitution = 0.5;
+
         break;
     }
 

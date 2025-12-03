@@ -26,9 +26,9 @@ export const CollisionSimulation = () => {
       world = new PhysicsWorld();
       world.gravity.set(0, 0); // Zero gravity for this demo
 
-      // Create walls
-      const wallThickness = 100;
-      const walls = [
+      // Create arena walls just outside the viewport so balls bounce off-screen edges
+      const wallThickness = 80;
+      const staticBodies = [
         // Top
         new PhysicsBody({
           position: new Vector2(canvas.width / 2, -wallThickness / 2),
@@ -52,7 +52,7 @@ export const CollisionSimulation = () => {
           restitution: 1,
           friction: 0,
         }),
-        // Left
+        // Left wall
         new PhysicsBody({
           position: new Vector2(-wallThickness / 2, canvas.height / 2),
           type: "rectangle",
@@ -62,7 +62,7 @@ export const CollisionSimulation = () => {
           restitution: 1,
           friction: 0,
         }),
-        // Right
+        // Right wall
         new PhysicsBody({
           position: new Vector2(
             canvas.width + wallThickness / 2,
@@ -76,7 +76,7 @@ export const CollisionSimulation = () => {
           friction: 0,
         }),
       ];
-      walls.forEach((w) => world.addBody(w));
+      staticBodies.forEach((body) => world.addBody(body));
 
       balls = [
         new Ball(100, 100, 30, "#D62412"),
@@ -102,6 +102,12 @@ export const CollisionSimulation = () => {
 
     const loop = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, "#0d121f");
+      gradient.addColorStop(1, "#1c2238");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       world.step(1 / 60);
 
