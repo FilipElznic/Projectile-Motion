@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Ball } from "../classes/Ball";
 import { Vector2 } from "../classes/Vector2";
-import { Target } from "../classes/Target";
-import { PhysicsWorld, PhysicsBody } from "../classes/PhysicsEngine";
+import { Target, type TargetType } from "../classes/Target";
+import {
+  PhysicsWorld,
+  PhysicsBody,
+  type CollisionManifold,
+} from "../classes/PhysicsEngine";
 import { RefreshCw, Trophy, Star } from "lucide-react";
 
 export const AngryBirdsGame = () => {
@@ -29,7 +33,7 @@ export const AngryBirdsGame = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const LAUNCH_POWER = 0.15; // Reduced for impulse
+    const LAUNCH_POWER = 3.0; // Increased for better launch
     const MAX_DRAG_DISTANCE = 150;
 
     let animationFrameId: number;
@@ -81,7 +85,7 @@ export const AngryBirdsGame = () => {
         y: number,
         w: number,
         h: number,
-        type: any
+        type: TargetType
       ) => {
         // Adjust y to be center
         const t = new Target(x, y, w, h, type);
@@ -93,17 +97,20 @@ export const AngryBirdsGame = () => {
       };
 
       // Structure 1: Simple Tower
+      // Add small gaps (0.1) to prevent initial overlap
+      const gap = 0.5;
+
       // Base stones
       createTarget(
         baseX - blockSize,
-        floorY - blockSize,
+        floorY - blockSize - gap,
         blockSize,
         blockSize,
         "stone"
       );
       createTarget(
         baseX + blockSize,
-        floorY - blockSize,
+        floorY - blockSize - gap,
         blockSize,
         blockSize,
         "stone"
@@ -112,26 +119,32 @@ export const AngryBirdsGame = () => {
       // Wood plank across
       createTarget(
         baseX - blockSize,
-        floorY - blockSize * 2,
+        floorY - blockSize * 2 - gap * 2,
         blockSize * 3,
         blockSize,
         "wood"
       );
 
       // Pig on top
-      createTarget(baseX, floorY - blockSize * 3, blockSize, blockSize, "pig");
+      createTarget(
+        baseX,
+        floorY - blockSize * 3 - gap * 3,
+        blockSize,
+        blockSize,
+        "pig"
+      );
 
       // Side structures
       createTarget(
         baseX - blockSize * 2.5,
-        floorY - blockSize,
+        floorY - blockSize - gap,
         blockSize,
         blockSize,
         "wood"
       );
       createTarget(
         baseX - blockSize * 2.5,
-        floorY - blockSize * 2,
+        floorY - blockSize * 2 - gap * 2,
         blockSize,
         blockSize,
         "pig"
@@ -139,14 +152,14 @@ export const AngryBirdsGame = () => {
 
       createTarget(
         baseX + blockSize * 2.5,
-        floorY - blockSize,
+        floorY - blockSize - gap,
         blockSize,
         blockSize,
         "wood"
       );
       createTarget(
         baseX + blockSize * 2.5,
-        floorY - blockSize * 2,
+        floorY - blockSize * 2 - gap * 2,
         blockSize,
         blockSize,
         "ice"
@@ -157,7 +170,7 @@ export const AngryBirdsGame = () => {
       state.score = 0;
 
       // Setup collision listener
-      state.world.onCollision((manifold) => {
+      state.world.onCollision((manifold: CollisionManifold) => {
         const { bodyA, bodyB } = manifold;
 
         // Calculate relative velocity magnitude
@@ -166,11 +179,10 @@ export const AngryBirdsGame = () => {
         // The manifold is generated before resolution, so velocities are pre-resolution.
         const relVel = Vector2.sub(bodyA.velocity, bodyB.velocity).mag();
 
-        const damageThreshold = 3; // Minimum speed to cause damage
+        const damageThreshold = 8; // Increased threshold to prevent jitter damage
 
         if (relVel > damageThreshold) {
           const damage = relVel * 5;
-
           const handleDamage = (body: PhysicsBody) => {
             if (body.userData["type"] === "target") {
               const target = body.userData["parent"] as Target;
@@ -266,10 +278,8 @@ export const AngryBirdsGame = () => {
         ) {
           // Give it a moment before resetting?
           // For now just reset
-          if (state.status !== "won" && state.status !== "resetting") {
-            state.status = "resetting";
-            setGameState("resetting");
-          }
+          state.status = "resetting";
+          setGameState("resetting");
         }
 
         // Stop if out of bounds
@@ -277,10 +287,8 @@ export const AngryBirdsGame = () => {
           ball.body.position.x > canvas.width + 100 ||
           ball.body.position.x < -100
         ) {
-          if (state.status !== "won" && state.status !== "resetting") {
-            state.status = "resetting";
-            setGameState("resetting");
-          }
+          state.status = "resetting";
+          setGameState("resetting");
         }
       }
 

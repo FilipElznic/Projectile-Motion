@@ -6,7 +6,6 @@ import { Card } from "../components/Card";
 import { MathBlock } from "../components/MathBlock";
 import {
   Play,
-  Trophy,
   Target,
   Zap,
   Settings,
@@ -32,7 +31,7 @@ const SimulationContainer = ({
   children: React.ReactNode;
   title: string;
   description: string;
-  icon: any;
+  icon: React.ElementType;
   color?: string;
   borderColor?: string;
   mathTitle: string;

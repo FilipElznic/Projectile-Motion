@@ -62,7 +62,8 @@ export const GravitySimulation = () => {
         ball.body.position.y > canvas.height - ball.radius - 30
       ) {
         // Give it a random small push or reset
-        if (Math.random() > 0.98) {
+        // Reduced probability to let it rest longer (approx 3-4 seconds)
+        if (Math.random() > 0.995) {
           ball.body.velocity.y = -15;
           ball.body.velocity.x = (Math.random() - 0.5) * 20;
           // Wake up if sleeping (not implemented yet, but good practice)

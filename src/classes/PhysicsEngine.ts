@@ -107,27 +107,39 @@ export class PhysicsBody {
     }
   }
 
-  integrate(dt: number, gravity: Vector2) {
+  // Split integration into velocity and position updates for better stability
+  updateVelocity(dt: number, gravity: Vector2) {
     if (this.isStatic) return;
 
-    // Linear
+    // Apply gravity and forces
     this.applyForce(Vector2.mult(gravity, this.mass));
     const acceleration = Vector2.mult(this.force, this.invMass);
     this.velocity.add(Vector2.mult(acceleration, dt));
-    this.position.add(Vector2.mult(this.velocity, dt));
 
-    // Angular
+    // Angular acceleration
     const angularAcc = this.torque * this.invInertia;
     this.angularVelocity += angularAcc * dt;
-    this.angle += this.angularVelocity * dt;
 
     // Clear forces
     this.force.set(0, 0);
     this.torque = 0;
 
     // Damping
-    this.velocity.mult(0.99);
+    this.velocity.mult(0.995);
     this.angularVelocity *= 0.98;
+  }
+
+  updatePosition(dt: number) {
+    if (this.isStatic) return;
+
+    this.position.add(Vector2.mult(this.velocity, dt));
+    this.angle += this.angularVelocity * dt;
+  }
+
+  // Legacy method kept for compatibility if needed, but we use split update now
+  integrate(dt: number, gravity: Vector2) {
+    this.updateVelocity(dt, gravity);
+    this.updatePosition(dt);
   }
 
   getVertices(): Vector2[] {
@@ -192,12 +204,22 @@ export class PhysicsWorld {
     // Limit dt to avoid instability
     const safeDt = Math.min(dt, 0.05);
 
-    // 1. Integrate forces
+    // Iterations for solver stability
+    const iterations = 10;
+
+    // 1. Update Velocities (Integrate Forces)
     for (const body of this.bodies) {
-      body.integrate(safeDt, this.gravity);
+      body.updateVelocity(safeDt, this.gravity);
     }
 
-    // 2. Detect collisions
+    // 2. Detect & Resolve Collisions (Iterative Impulse Solver)
+    // We detect once (broadphase optimization could go here)
+    // Then resolve multiple times
+
+    // For simplicity in this engine, we'll detect and resolve in the loop
+    // Ideally, we cache contacts (manifolds) and just resolve them.
+
+    // Let's gather all manifolds first
     const collisions: CollisionManifold[] = [];
     for (let i = 0; i < this.bodies.length; i++) {
       for (let j = i + 1; j < this.bodies.length; j++) {
@@ -206,6 +228,8 @@ export class PhysicsWorld {
 
         if (bodyA.isStatic && bodyB.isStatic) continue;
 
+        // Simple AABB check optimization could go here
+
         const manifold = this.detectCollision(bodyA, bodyB);
         if (manifold.hasCollision) {
           collisions.push(manifold);
@@ -213,12 +237,31 @@ export class PhysicsWorld {
       }
     }
 
-    // 3. Resolve collisions
+    // Notify listeners (only once per frame)
     for (const manifold of collisions) {
-      this.resolveCollision(manifold);
-
-      // Notify listeners
       this.collisionListeners.forEach((cb) => cb(manifold));
+    }
+
+    // Resolve Velocity Constraints (Impulses)
+    for (let k = 0; k < iterations; k++) {
+      for (const manifold of collisions) {
+        this.resolveVelocity(manifold);
+      }
+    }
+
+    // 3. Update Positions
+    for (const body of this.bodies) {
+      body.updatePosition(safeDt);
+    }
+
+    // 4. Resolve Position Constraints (Prevent Sinking/Penetration)
+    // This is done after position update to fix any remaining overlap
+    for (const manifold of collisions) {
+      // Re-check collision depth because positions changed?
+      // Or just use the depth from before?
+      // Standard is to use the depth from detection but it might be stale.
+      // For this simple engine, we'll use the initial depth but corrected.
+      this.resolvePosition(manifold);
     }
   }
 
@@ -453,22 +496,28 @@ export class PhysicsWorld {
     return p1.max >= p2.min && p2.max >= p1.min;
   }
 
-  resolveCollision(m: CollisionManifold) {
-    const { bodyA, bodyB, normal, depth, contacts } = m;
+  resolvePosition(m: CollisionManifold) {
+    const { bodyA, bodyB, normal, depth } = m;
 
     // Positional correction (prevent sinking)
-    const percent = 0.5;
-    const slop = 0.05;
+    const percent = 0.2; // Penetration percentage to correct
+    const slop = 0.05; // Penetration allowance
+
     const correctionMag =
       (Math.max(depth - slop, 0) / (bodyA.invMass + bodyB.invMass)) * percent;
+    if (correctionMag <= 0) return;
+
     const correction = Vector2.mult(normal, correctionMag);
 
     if (!bodyA.isStatic)
       bodyA.position.sub(Vector2.mult(correction, bodyA.invMass));
     if (!bodyB.isStatic)
       bodyB.position.add(Vector2.mult(correction, bodyB.invMass));
+  }
 
-    // Velocity resolution
+  resolveVelocity(m: CollisionManifold) {
+    const { bodyA, bodyB, normal, contacts } = m;
+
     // rA and rB are vectors from center of mass to contact point
     const contact = contacts[0] || bodyA.position; // Fallback
     const rA = Vector2.sub(contact, bodyA.position);
@@ -494,7 +543,13 @@ export class PhysicsWorld {
 
     if (velAlongNormal > 0) return; // Moving away
 
-    const e = Math.min(bodyA.restitution, bodyB.restitution);
+    let e = Math.min(bodyA.restitution, bodyB.restitution);
+
+    // Resting contact fix: If velocity is very low (gravity only), don't bounce
+    // Gravity * dt is approx 9.8 * 50 * 0.016 ~= 8
+    if (velAlongNormal > -20) {
+      e = 0;
+    }
 
     // Impulse scalar
     // j = -(1 + e) * v_rel . n / (1/ma + 1/mb + (rA x n)^2 / Ia + (rB x n)^2 / Ib)
@@ -516,8 +571,12 @@ export class PhysicsWorld {
     if (!bodyB.isStatic) bodyB.applyImpulse(impulse, rB);
 
     // Friction (Tangent impulse)
-    const tangent = Vector2.sub(rv, Vector2.mult(normal, velAlongNormal));
-    tangent.normalize();
+    const tangentVec = Vector2.sub(rv, Vector2.mult(normal, velAlongNormal));
+    const tangentLen = tangentVec.mag();
+
+    if (tangentLen < 0.1) return; // Skip friction for tiny velocities to prevent jitter
+
+    const tangent = Vector2.div(tangentVec, tangentLen);
 
     const jt = -rv.dot(tangent);
     // Friction coefficient

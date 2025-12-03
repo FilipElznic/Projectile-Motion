@@ -1,5 +1,5 @@
 import "katex/dist/katex.min.css";
-import { BlockMath, InlineMath } from "react-katex";
+import { BlockMath } from "react-katex";
 
 interface MathBlockProps {
   title: string;
