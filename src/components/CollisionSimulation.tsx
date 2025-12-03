@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Ball } from "../classes/Ball";
 import { Vector2 } from "../classes/Vector2";
+import { PhysicsWorld, PhysicsBody } from "../classes/PhysicsEngine";
 
 export const CollisionSimulation = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -11,6 +12,7 @@ export const CollisionSimulation = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    let world: PhysicsWorld;
     let balls: Ball[] = [];
     let animationFrameId: number;
 
@@ -20,74 +22,90 @@ export const CollisionSimulation = () => {
         canvas.width = parent.clientWidth;
         canvas.height = parent.clientHeight;
       }
+
+      world = new PhysicsWorld();
+      world.gravity.set(0, 0); // Zero gravity for this demo
+
+      // Create walls
+      const wallThickness = 100;
+      const walls = [
+        // Top
+        new PhysicsBody({
+          position: new Vector2(canvas.width / 2, -wallThickness / 2),
+          type: "rectangle",
+          width: canvas.width,
+          height: wallThickness,
+          isStatic: true,
+          restitution: 1,
+          friction: 0,
+        }),
+        // Bottom
+        new PhysicsBody({
+          position: new Vector2(
+            canvas.width / 2,
+            canvas.height + wallThickness / 2
+          ),
+          type: "rectangle",
+          width: canvas.width,
+          height: wallThickness,
+          isStatic: true,
+          restitution: 1,
+          friction: 0,
+        }),
+        // Left
+        new PhysicsBody({
+          position: new Vector2(-wallThickness / 2, canvas.height / 2),
+          type: "rectangle",
+          width: wallThickness,
+          height: canvas.height,
+          isStatic: true,
+          restitution: 1,
+          friction: 0,
+        }),
+        // Right
+        new PhysicsBody({
+          position: new Vector2(
+            canvas.width + wallThickness / 2,
+            canvas.height / 2
+          ),
+          type: "rectangle",
+          width: wallThickness,
+          height: canvas.height,
+          isStatic: true,
+          restitution: 1,
+          friction: 0,
+        }),
+      ];
+      walls.forEach((w) => world.addBody(w));
+
       balls = [
         new Ball(100, 100, 30, "#D62412"),
         new Ball(canvas.width - 100, 150, 30, "#FFCE00"),
         new Ball(canvas.width / 2, 200, 20, "#ffffff"),
       ];
-      balls[0].velocity = new Vector2(4, 3);
-      balls[1].velocity = new Vector2(-3, 4);
-      balls[2].velocity = new Vector2(1, -5);
-      balls.forEach((b) => (b.isMoving = true));
-    };
 
-    const checkCollisions = () => {
-      // Wall collisions
-      balls.forEach((ball) => {
-        if (ball.position.x - ball.radius < 0) {
-          ball.position.x = ball.radius;
-          ball.velocity.x *= -1;
-        }
-        if (ball.position.x + ball.radius > canvas.width) {
-          ball.position.x = canvas.width - ball.radius;
-          ball.velocity.x *= -1;
-        }
-        if (ball.position.y - ball.radius < 0) {
-          ball.position.y = ball.radius;
-          ball.velocity.y *= -1;
-        }
-        if (ball.position.y + ball.radius > canvas.height) {
-          ball.position.y = canvas.height - ball.radius;
-          ball.velocity.y *= -1;
-        }
-      });
+      // Setup balls
+      balls[0].body.velocity = new Vector2(400, 300); // Pixels per second approx
+      balls[0].body.restitution = 1;
+      balls[0].body.friction = 0;
 
-      // Ball-Ball collision
-      for (let i = 0; i < balls.length; i++) {
-        for (let j = i + 1; j < balls.length; j++) {
-          const b1 = balls[i];
-          const b2 = balls[j];
-          const dist = Vector2.dist(b1.position, b2.position);
+      balls[1].body.velocity = new Vector2(-300, 400);
+      balls[1].body.restitution = 1;
+      balls[1].body.friction = 0;
 
-          if (dist < b1.radius + b2.radius) {
-            // Simple elastic collision response
-            // Swap velocities (approximate for equal mass)
-            const temp = b1.velocity.copy();
-            b1.velocity = b2.velocity.copy();
-            b2.velocity = temp;
+      balls[2].body.velocity = new Vector2(100, -500);
+      balls[2].body.restitution = 1;
+      balls[2].body.friction = 0;
 
-            // Separate them to prevent sticking
-            const overlap = (b1.radius + b2.radius - dist) / 2;
-            const direction = Vector2.sub(b2.position, b1.position).normalize();
-
-            // Move both apart
-            b1.position.sub(Vector2.mult(direction, overlap));
-            b2.position.add(Vector2.mult(direction, overlap));
-          }
-        }
-      }
+      balls.forEach((b) => world.addBody(b.body));
     };
 
     const loop = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      checkCollisions();
+      world.step(1 / 60);
 
       balls.forEach((ball) => {
-        // Update position manually since Ball.update has gravity and floor logic we might not want here
-        // Or we can use Ball.update with 0 gravity if we want floor bounce
-        // Let's use manual update for zero-gravity collision demo
-        ball.position.add(ball.velocity);
         ball.draw(ctx);
       });
 
