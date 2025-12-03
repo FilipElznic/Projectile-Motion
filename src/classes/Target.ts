@@ -100,37 +100,93 @@ export class Target {
     const w = this.width;
     const h = this.height;
 
-    // Color based on type and damage
-    let color = "#8D6E63"; // Wood default
-    let strokeColor = "#5D4037";
-
-    switch (this.type) {
-      case "stone":
-        color = "#9E9E9E";
-        strokeColor = "#616161";
-        break;
-      case "wood":
-        color = "#A1887F";
-        strokeColor = "#5D4037";
-        break;
-      case "ice":
-        color = "#B3E5FC";
-        strokeColor = "#4FC3F7";
-        break;
-      case "pig":
-        color = "#8BC34A";
-        strokeColor = "#33691E";
-        break;
-    }
-
     // Damage overlay
     const damageRatio = 1 - this.health / this.maxHealth;
 
-    ctx.fillStyle = color;
-    ctx.fillRect(-w / 2, -h / 2, w, h);
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    switch (this.type) {
+      case "wood":
+        // Wood: Brown with a border and a "plank" look
+        ctx.fillStyle = "#8D6E63";
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+
+        ctx.strokeStyle = "#5D4037";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+        // Inner border for plank look
+        ctx.strokeRect(-w / 2 + 5, -h / 2 + 5, w - 10, h - 10);
+        break;
+
+      case "stone":
+        // Stone: Grey with a slightly rough texture or border
+        ctx.fillStyle = "#9E9E9E";
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+
+        ctx.strokeStyle = "#616161";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+        // Rough texture details
+        ctx.fillStyle = "#757575";
+        ctx.beginPath();
+        ctx.arc(-w / 4, -h / 4, 3, 0, Math.PI * 2);
+        ctx.arc(w / 4, h / 4, 4, 0, Math.PI * 2);
+        ctx.arc(w / 6, -h / 6, 2, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+
+      case "ice":
+        // Glass: Light blue/transparent with a white reflection streak
+        ctx.fillStyle = "rgba(179, 229, 252, 0.9)";
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+
+        ctx.strokeStyle = "#4FC3F7";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+        // Reflection streak
+        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.beginPath();
+        ctx.moveTo(-w / 2 + 5, -h / 2 + 5);
+        ctx.lineTo(0, -h / 2 + 5);
+        ctx.lineTo(-w / 2 + 5, 0);
+        ctx.fill();
+        break;
+
+      case "pig":
+        // Pig body
+        ctx.fillStyle = "#8BC34A";
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+        ctx.strokeStyle = "#33691E";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+        // Draw pig face
+        ctx.fillStyle = "#4CAF50"; // Snout
+        ctx.beginPath();
+        ctx.ellipse(0, 0, w / 3, h / 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "black"; // Nostrils
+        ctx.beginPath();
+        ctx.arc(-w / 6, 0, w / 10, 0, Math.PI * 2);
+        ctx.arc(w / 6, 0, w / 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(-w / 4, -h / 4, w / 8, 0, Math.PI * 2);
+        ctx.arc(w / 4, -h / 4, w / 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(-w / 4, -h / 4, w / 16, 0, Math.PI * 2);
+        ctx.arc(w / 4, -h / 4, w / 16, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+    }
 
     // Cracks
     if (damageRatio > 0.3) {
@@ -139,34 +195,8 @@ export class Target {
       ctx.lineTo(0, 0);
       ctx.lineTo(w / 4, -h / 4);
       ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.lineWidth = 2;
       ctx.stroke();
-    }
-
-    if (this.type === "pig") {
-      // Draw pig face
-      ctx.fillStyle = "#4CAF50"; // Snout
-      ctx.beginPath();
-      ctx.ellipse(0, 0, w / 3, h / 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "black"; // Nostrils
-      ctx.beginPath();
-      ctx.arc(-w / 6, 0, w / 10, 0, Math.PI * 2);
-      ctx.arc(w / 6, 0, w / 10, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Eyes
-      ctx.fillStyle = "white";
-      ctx.beginPath();
-      ctx.arc(-w / 4, -h / 4, w / 8, 0, Math.PI * 2);
-      ctx.arc(w / 4, -h / 4, w / 8, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "black";
-      ctx.beginPath();
-      ctx.arc(-w / 4, -h / 4, w / 16, 0, Math.PI * 2);
-      ctx.arc(w / 4, -h / 4, w / 16, 0, Math.PI * 2);
-      ctx.fill();
     }
 
     ctx.restore();
