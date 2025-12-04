@@ -26,7 +26,7 @@ export class Target {
     let mass = 1;
     let health = 10;
     let restitution = 0.2;
-    let friction = 0.0;
+    let friction = 0.8;
 
     // Set properties based on type
     switch (type) {
@@ -34,23 +34,27 @@ export class Target {
         mass = 10;
         health = 100;
         restitution = 0.0;
+        friction = 0.9;
 
         break;
       case "wood":
         mass = 2;
         health = 40;
         restitution = 0.0;
+        friction = 0.8;
 
         break;
       case "ice":
         mass = 1;
         health = 15;
         restitution = 0.0;
+        friction = 0.1;
 
         break;
       case "pig":
         mass = 1.5;
         health = 5;
+        friction = 0.7;
 
         break;
     }
@@ -58,15 +62,21 @@ export class Target {
     this.maxHealth = health;
     this.health = health;
 
+    // Use slightly smaller hitbox for rendering to avoid visual overlap issues
+    // Pigs have ears/decorations that stick out, so reduce hitbox by 10%
+    const hitboxScale = type === "pig" ? 0.85 : 0.95;
+    const hitboxWidth = width * hitboxScale;
+    const hitboxHeight = height * hitboxScale;
+
     this.body = new PhysicsBody({
       position: new Vector2(x + width / 2, y + height / 2), // Physics body is centered
       type: "rectangle",
-      width: width,
-      height: height,
+      width: hitboxWidth,
+      height: hitboxHeight,
       mass: mass,
       restitution: restitution,
       friction: friction,
-      isStatic: false, // Targets are dynamic
+      isStatic: false, // Targets are dynamic, gravity controlled by game state
     });
     this.body.userData = { type: "target", parent: this };
   }
@@ -96,9 +106,9 @@ export class Target {
     ctx.translate(pos.x, pos.y);
     ctx.rotate(angle);
 
-    // Draw centered rect
-    const w = this.width;
-    const h = this.height;
+    // Draw centered rect - use physics body size for accurate rendering
+    const w = this.body.width;
+    const h = this.body.height;
 
     // Damage overlay
     const damageRatio = 1 - this.health / this.maxHealth;

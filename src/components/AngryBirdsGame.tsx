@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  useMemo,
-  type CSSProperties,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import { Ball } from "../classes/Ball";
 import { Vector2 } from "../classes/Vector2";
 import { Target, type TargetType } from "../classes/Target";
@@ -13,191 +7,18 @@ import {
   PhysicsBody,
   type CollisionManifold,
 } from "../classes/PhysicsEngine";
-import { RefreshCw, Trophy, Star } from "lucide-react";
 import { levels } from "../levels/levels";
-
-const LAUNCH_POWER = 4.6;
-const MAX_DRAG_DISTANCE = 190;
-const GAME_GRAVITY = 210; // pixels per second^2
-const FLOOR_HEIGHT = 20;
-
-const Cloud = () => (
-  <div className="w-32 h-12 bg-white rounded-full relative shadow-sm">
-    <div className="absolute -top-6 left-4 w-14 h-14 bg-white rounded-full"></div>
-    <div className="absolute -top-8 left-12 w-16 h-16 bg-white rounded-full"></div>
-    <div className="absolute -top-4 left-20 w-12 h-12 bg-white rounded-full"></div>
-  </div>
-);
-
-const ParticleExplosion = ({
-  x,
-  y,
-  color,
-}: {
-  x: number;
-  y: number;
-  color: string;
-}) => {
-  // Use useMemo to keep random values stable across re-renders
-  const particles = useMemo(() => {
-    // Use a seeded random or just Math.random() inside useMemo is fine because it only runs once per component instance
-    // To satisfy linter about impure function, we can just use pseudo-random based on index
-    return Array.from({ length: 8 }).map((_, i) => {
-      const angle = (Math.PI * 2 * i) / 8;
-      // Pseudo-random distance based on index to be pure
-      const dist = 30 + ((i * 13) % 20);
-      const tx = Math.cos(angle) * dist;
-      const ty = Math.sin(angle) * dist;
-      return { id: i, tx, ty };
-    });
-  }, []);
-
-  return (
-    <div className="absolute pointer-events-none" style={{ left: x, top: y }}>
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="absolute w-3 h-3 rounded-sm animate-particle"
-          style={
-            {
-              backgroundColor: color,
-              "--tx": `${p.tx}px`,
-              "--ty": `${p.ty}px`,
-            } as CSSProperties
-          }
-        />
-      ))}
-    </div>
-  );
-};
-
-const ScorePopup = ({
-  x,
-  y,
-  score,
-}: {
-  x: number;
-  y: number;
-  score: number;
-}) => (
-  <div
-    className="absolute pointer-events-none font-black text-2xl text-white drop-shadow-md animate-popup z-30"
-    style={{ left: x, top: y }}
-  >
-    +{score}
-  </div>
-);
-
-const BirdCharacter = ({
-  state,
-  angle,
-}: {
-  state: "idle" | "flying" | "dizzy";
-  angle: number;
-}) => {
-  return (
-    <div
-      className="w-full h-full relative"
-      style={{ transform: `rotate(${angle}rad)` }}
-    >
-      {/* Body */}
-      <div className="absolute inset-0 bg-red-500 rounded-full shadow-inner border-2 border-red-700 overflow-hidden">
-        <div className="absolute bottom-0 w-full h-1/3 bg-red-200 opacity-30 rounded-b-full"></div>
-      </div>
-
-      {/* Eyes Container */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-3/4 h-1/3 flex justify-center gap-1">
-        {/* Left Eye */}
-        <div
-          className={`relative w-3 h-3 bg-white rounded-full border border-gray-300 ${
-            state === "idle" ? "animate-blink" : ""
-          }`}
-        >
-          <div
-            className={`absolute top-1 right-0.5 w-1 h-1 bg-black rounded-full ${
-              state === "dizzy" ? "animate-spin" : ""
-            }`}
-          ></div>
-          {state === "flying" && (
-            <div className="absolute -top-1 left-0 w-full h-1 bg-black rotate-12"></div>
-          )}
-        </div>
-        {/* Right Eye */}
-        <div
-          className={`relative w-3 h-3 bg-white rounded-full border border-gray-300 ${
-            state === "idle" ? "animate-blink" : ""
-          }`}
-        >
-          <div
-            className={`absolute top-1 left-0.5 w-1 h-1 bg-black rounded-full ${
-              state === "dizzy" ? "animate-spin" : ""
-            }`}
-            style={{ animationDirection: "reverse" }}
-          ></div>
-          {state === "flying" && (
-            <div className="absolute -top-1 right-0 w-full h-1 bg-black -rotate-12"></div>
-          )}
-        </div>
-      </div>
-
-      {/* Beak */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-3 h-3 bg-yellow-400 rotate-45 border border-yellow-600"></div>
-
-      {/* Tail */}
-      <div className="absolute top-1/2 -left-1 w-2 h-2 bg-black -z-10 rotate-45"></div>
-    </div>
-  );
-};
-
-const PigCharacter = ({ state }: { state: "idle" | "scared" }) => {
-  return (
-    <div className="w-full h-full relative">
-      {/* Body */}
-      <div className="absolute inset-0 bg-green-400 rounded-full border-2 border-green-600 shadow-inner"></div>
-
-      {/* Ears */}
-      <div className="absolute -top-1 left-0 w-2 h-2 bg-green-400 rounded-full border border-green-600"></div>
-      <div className="absolute -top-1 right-0 w-2 h-2 bg-green-400 rounded-full border border-green-600"></div>
-
-      {/* Snout */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/4 w-5 h-3 bg-green-300 rounded-full border border-green-500 flex justify-center items-center gap-1">
-        <div className="w-1 h-1 bg-green-800 rounded-full"></div>
-        <div className="w-1 h-1 bg-green-800 rounded-full"></div>
-      </div>
-
-      {/* Eyes */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-full flex justify-center gap-3">
-        <div
-          className={`relative w-2.5 h-2.5 bg-white rounded-full border border-gray-300 ${
-            state === "scared" ? "scale-125" : ""
-          }`}
-        >
-          <div
-            className={`absolute top-1 left-0.5 w-1 h-1 bg-black rounded-full ${
-              state === "idle" ? "animate-look" : ""
-            }`}
-          ></div>
-        </div>
-        <div
-          className={`relative w-2.5 h-2.5 bg-white rounded-full border border-gray-300 ${
-            state === "scared" ? "scale-125" : ""
-          }`}
-        >
-          <div
-            className={`absolute top-1 left-0.5 w-1 h-1 bg-black rounded-full ${
-              state === "idle" ? "animate-look" : ""
-            }`}
-          ></div>
-        </div>
-      </div>
-
-      {/* Mouth (Scared) */}
-      {state === "scared" && (
-        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-3 h-2 bg-black rounded-full animate-pulse"></div>
-      )}
-    </div>
-  );
-};
+import {
+  LAUNCH_POWER,
+  MAX_DRAG_DISTANCE,
+  GAME_GRAVITY,
+  FLOOR_HEIGHT,
+} from "./game/GameConstants";
+import { ParticleExplosion, ScorePopup } from "./game/Effects";
+import { BirdCharacter, PigCharacter } from "./game/Characters";
+import { GameUI } from "./game/GameUI";
+import { GameOverlay } from "./game/GameOverlay";
+import { Background } from "./game/Background";
 
 export const AngryBirdsGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -254,6 +75,8 @@ export const AngryBirdsGame = () => {
       | "won"
       | "lost",
     launchTime: 0,
+    gravityEnabled: false,
+    gravityTimeout: null as number | null,
     // Callbacks for juice
     onShake: () => {},
     onExplode: (_x: number, _y: number, _color: string) => {
@@ -310,8 +133,9 @@ export const AngryBirdsGame = () => {
       const state = gameStateRef.current;
       state.status = "aiming";
 
-      // Reset world
+      // Reset world with gravity enabled
       state.world = new PhysicsWorld(new Vector2(0, GAME_GRAVITY));
+      state.gravityEnabled = true;
 
       // Position slingshot at 15% width
       state.startPos = new Vector2(canvas.width * 0.15, canvas.height - 150);
@@ -494,6 +318,8 @@ export const AngryBirdsGame = () => {
 
           if (restingOnFloor && slowMotion && lowSpin) {
             body.angularVelocity = 0;
+            body.velocity.x = 0; // Stop horizontal sliding completely
+            body.velocity.y = 0;
             // Snap towers upright so they don't look jittery once settled
             body.angle *= 0.3;
             if (Math.abs(body.angle) < 0.03) {
@@ -556,15 +382,15 @@ export const AngryBirdsGame = () => {
       // Draw slingshot band (back)
       // Removed canvas drawing for bands to use SVG overlay
       /*
-      if (state.isDragging) {
-        ctx.strokeStyle = "#3E2723";
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(state.startPos.x - 10, state.startPos.y);
-        ctx.lineTo(ball.body.position.x, ball.body.position.y);
-        ctx.stroke();
-      }
-      */
+        if (state.isDragging) {
+          ctx.strokeStyle = "#3E2723";
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.moveTo(state.startPos.x - 10, state.startPos.y);
+          ctx.lineTo(ball.body.position.x, ball.body.position.y);
+          ctx.stroke();
+        }
+        */
 
       // Check win condition
       const pigsRemaining = state.targets.filter(
@@ -675,15 +501,15 @@ export const AngryBirdsGame = () => {
       // Draw slingshot band (front)
       // Removed canvas drawing for bands to use SVG overlay
       /*
-      if (state.isDragging) {
-        ctx.strokeStyle = "#3E2723";
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(state.startPos.x + 10, state.startPos.y);
-        ctx.lineTo(ball.body.position.x, ball.body.position.y);
-        ctx.stroke();
-      }
-      */
+        if (state.isDragging) {
+          ctx.strokeStyle = "#3E2723";
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.moveTo(state.startPos.x + 10, state.startPos.y);
+          ctx.lineTo(ball.body.position.x, ball.body.position.y);
+          ctx.stroke();
+        }
+        */
 
       animationFrameId = requestAnimationFrame(loop);
     };
@@ -822,27 +648,7 @@ export const AngryBirdsGame = () => {
       }`}
     >
       {/* Dynamic Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-sky-300 to-sky-100 -z-10 pointer-events-none">
-        <div className="absolute top-10 left-[-150px] animate-float-slow opacity-90">
-          <Cloud />
-        </div>
-        <div
-          className="absolute top-32 left-[-200px] animate-float-medium opacity-70"
-          style={{ animationDelay: "10s" }}
-        >
-          <div className="transform scale-75">
-            <Cloud />
-          </div>
-        </div>
-        <div
-          className="absolute top-16 left-[-100px] animate-float-fast opacity-80"
-          style={{ animationDelay: "20s" }}
-        >
-          <div className="transform scale-50">
-            <Cloud />
-          </div>
-        </div>
-      </div>
+      <Background />
 
       {/* Juice Layer */}
       {explosions.map((e) => (
@@ -897,7 +703,7 @@ export const AngryBirdsGame = () => {
                 if (el) pigRefs.current.set(pig.body.id, el);
                 else pigRefs.current.delete(pig.body.id);
               }}
-              className="absolute origin-center will-change-transform"
+              className="absolute origin-center will-change-transform bg-red-800"
               style={{
                 width: pig.width,
                 height: pig.height,
@@ -921,20 +727,20 @@ export const AngryBirdsGame = () => {
           <>
             {/* Back Band (Behind Bird - rendered first) */}
             {/* Note: Since SVG is on top of canvas, this will be on top of everything on canvas unless we use z-index tricks.
-                But we can't put SVG between canvas layers.
-                However, the prompt asked for SVG lines.
-                If we want "Behind Bird", we have a problem if Bird is on Canvas.
-                Visual trick: The bird is usually opaque. If we draw the back band, then the bird, then the front band.
-                Since Bird is on Canvas (z-0) and SVG is (z-20), SVG is always on top.
-                We can't solve this perfectly without moving Bird to SVG/DOM or splitting Canvas.
-                BUT, we can draw the "Back Band" on the Canvas (as we did before) and only use SVG for "Front Band"?
-                The user asked for "Draw two dark SVG lines".
-                Let's render both in SVG. The "Back Band" will unfortunately be on top of the bird if the bird is on canvas.
-                Wait! We can use `globalCompositeOperation` on canvas? No.
-                
-                Let's just render them. The user might not notice the z-index issue if the band connects to the center of the bird.
-                Or we can offset the connection point.
-            */}
+                  But we can't put SVG between canvas layers.
+                  However, the prompt asked for SVG lines.
+                  If we want "Behind Bird", we have a problem if Bird is on Canvas.
+                  Visual trick: The bird is usually opaque. If we draw the back band, then the bird, then the front band.
+                  Since Bird is on Canvas (z-0) and SVG is (z-20), SVG is always on top.
+                  We can't solve this perfectly without moving Bird to SVG/DOM or splitting Canvas.
+                  BUT, we can draw the "Back Band" on the Canvas (as we did before) and only use SVG for "Front Band"?
+                  The user asked for "Draw two dark SVG lines".
+                  Let's render both in SVG. The "Back Band" will unfortunately be on top of the bird if the bird is on canvas.
+                  Wait! We can use `globalCompositeOperation` on canvas? No.
+                  
+                  Let's just render them. The user might not notice the z-index issue if the band connects to the center of the bird.
+                  Or we can offset the connection point.
+              */}
             <line
               x1={dragState.startPos.x - 10}
               y1={dragState.startPos.y}
@@ -971,70 +777,13 @@ export const AngryBirdsGame = () => {
         )}
       </svg>
 
-      <div className="absolute top-4 left-4 flex gap-4 z-10">
-        <div className="bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg border-2 border-slate-200 flex items-center gap-2">
-          <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-red-700 relative overflow-hidden">
-            <div className="absolute top-1 right-1 w-2 h-2 bg-white rounded-full"></div>
-          </div>
-          <span className="font-black text-xl text-slate-700">
-            x {birdsRemaining}
-          </span>
-        </div>
-        <div className="bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg border-2 border-slate-200 flex items-center gap-2">
-          <Trophy className="w-6 h-6 text-yellow-500" />
-          <span className="font-black text-xl text-slate-700">{score}</span>
-        </div>
-        <button
-          onClick={resetGame}
-          className="bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg border-2 border-slate-200 hover:bg-white transition-colors"
-        >
-          <RefreshCw className="w-6 h-6 text-slate-700" />
-        </button>
-      </div>
+      <GameUI
+        birdsRemaining={birdsRemaining}
+        score={score}
+        onReset={resetGame}
+      />
 
-      {gameState === "resetting" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm z-20">
-          <button
-            onClick={resetGame}
-            className="bg-[#D62412] text-white px-8 py-4 rounded-2xl font-black text-2xl shadow-xl hover:scale-105 transition-transform"
-          >
-            TRY AGAIN
-          </button>
-        </div>
-      )}
-
-      {gameState === "won" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md z-20">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl text-center transform scale-110">
-            <div className="flex justify-center gap-2 mb-4">
-              <Star
-                className="w-12 h-12 text-yellow-400 fill-yellow-400 animate-bounce"
-                style={{ animationDelay: "0ms" }}
-              />
-              <Star
-                className="w-12 h-12 text-yellow-400 fill-yellow-400 animate-bounce"
-                style={{ animationDelay: "100ms" }}
-              />
-              <Star
-                className="w-12 h-12 text-yellow-400 fill-yellow-400 animate-bounce"
-                style={{ animationDelay: "200ms" }}
-              />
-            </div>
-            <h2 className="text-4xl font-black text-slate-800 mb-2">
-              LEVEL CLEARED!
-            </h2>
-            <p className="text-2xl font-bold text-slate-500 mb-8">
-              Score: {score}
-            </p>
-            <button
-              onClick={resetGame}
-              className="bg-[#48bb78] text-white px-8 py-4 rounded-2xl font-black text-2xl shadow-xl hover:scale-105 transition-transform"
-            >
-              NEXT LEVEL
-            </button>
-          </div>
-        </div>
-      )}
+      <GameOverlay gameState={gameState} score={score} onReset={resetGame} />
 
       <canvas
         ref={canvasRef}
