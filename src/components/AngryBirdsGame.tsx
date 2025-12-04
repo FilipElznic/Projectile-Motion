@@ -14,6 +14,7 @@ import {
   type CollisionManifold,
 } from "../classes/PhysicsEngine";
 import { RefreshCw, Trophy, Star } from "lucide-react";
+import { levels } from "../levels/levels";
 
 const LAUNCH_POWER = 4.6;
 const MAX_DRAG_DISTANCE = 190;
@@ -201,8 +202,11 @@ const PigCharacter = ({ state }: { state: "idle" | "scared" }) => {
 export const AngryBirdsGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
+  const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+  const [birdsRemaining, setBirdsRemaining] = useState(0);
+  const [resetKey, setResetKey] = useState(0);
   const [gameState, setGameState] = useState<
-    "aiming" | "flying" | "hit" | "resetting" | "won"
+    "aiming" | "flying" | "hit" | "resetting" | "won" | "lost"
   >("aiming");
   const [dragState, setDragState] = useState<{
     isDragging: boolean;
@@ -237,11 +241,19 @@ export const AngryBirdsGame = () => {
   const gameStateRef = useRef({
     world: new PhysicsWorld(),
     score: 0,
+    birdsRemaining: 0,
     targets: [] as Target[],
     ball: null as Ball | null,
     startPos: new Vector2(150, 0), // Y will be set in init
     isDragging: false,
-    status: "aiming" as "aiming" | "flying" | "hit" | "resetting" | "won",
+    status: "aiming" as
+      | "aiming"
+      | "flying"
+      | "hit"
+      | "resetting"
+      | "won"
+      | "lost",
+    launchTime: 0,
     // Callbacks for juice
     onShake: () => {},
     onExplode: (_x: number, _y: number, _color: string) => {
@@ -327,7 +339,7 @@ export const AngryBirdsGame = () => {
       state.ball.body.position.set(state.startPos.x, state.startPos.y);
       state.world.addBody(state.ball.body);
 
-      // Create targets (Level 1 Structure)
+      // Create targets (Level Structure)
       state.targets = [];
       const baseX = canvas.width * 0.75;
       const floorY = canvas.height - FLOOR_HEIGHT; // Top of floor
@@ -342,81 +354,25 @@ export const AngryBirdsGame = () => {
       ) => {
         // Adjust y to be center
         const t = new Target(x, y, w, h, type);
-        // We need to adjust position because Target constructor expects top-left but PhysicsBody is center.
-        // Actually I modified Target constructor to take top-left and convert to center.
-        // So passing top-left is correct.
         state.targets.push(t);
         state.world.addBody(t.body);
       };
 
-      // Structure 1: Simple Tower
-      // Add small gaps (0.1) to prevent initial overlap
-      const gap = 0.0;
+      // Load Level
+      const level = levels[currentLevelIndex] || levels[0];
+      state.birdsRemaining = level.birds - 1; // One is in the sling
+      setBirdsRemaining(state.birdsRemaining);
 
-      // Base stones
-      createTarget(
-        baseX - blockSize,
-        floorY - blockSize - gap,
-        blockSize,
-        blockSize,
-        "stone"
-      );
-      createTarget(
-        baseX + blockSize,
-        floorY - blockSize - gap,
-        blockSize,
-        blockSize,
-        "stone"
-      );
-
-      // Wood plank across
-      createTarget(
-        baseX - blockSize,
-        floorY - blockSize * 2 - gap * 2,
-        blockSize * 3,
-        blockSize,
-        "wood"
-      );
-
-      // Pig on top
-      createTarget(
-        baseX,
-        floorY - blockSize * 3 - gap * 3,
-        blockSize,
-        blockSize,
-        "pig"
-      );
-
-      // Side structures
-      createTarget(
-        baseX - blockSize * 2.5,
-        floorY - blockSize - gap,
-        blockSize,
-        blockSize,
-        "wood"
-      );
-      createTarget(
-        baseX - blockSize * 2.5,
-        floorY - blockSize * 2 - gap * 2,
-        blockSize,
-        blockSize,
-        "pig"
-      );
-
-      createTarget(
-        baseX + blockSize * 2.5,
-        floorY - blockSize - gap,
-        blockSize,
-        blockSize,
-        "wood"
-      );
-      createTarget(
-        baseX + blockSize * 2.5,
-        floorY - blockSize * 2 - gap * 2,
-        blockSize,
-        blockSize,
-        "ice"
-      );
+      const gap = 2;
+      level.targets.forEach((t) => {
+        createTarget(
+          baseX + t.x * (blockSize + gap),
+          floorY - t.y * (blockSize + gap) + gap,
+          t.w * blockSize,
+          t.h * blockSize,
+          t.type
+        );
+      });
 
       setGameState("aiming");
       setScore(0);
@@ -623,25 +579,39 @@ export const AngryBirdsGame = () => {
 
       // Check reset condition
       if (state.status === "flying") {
-        // Stop if slow and low
-        if (
-          Math.abs(ball.body.velocity.x) < 0.1 &&
-          Math.abs(ball.body.velocity.y) < 0.1 &&
-          ball.body.position.y > canvas.height - 100
-        ) {
-          // Give it a moment before resetting?
-          // For now just reset
-          state.status = "resetting";
-          setGameState("resetting");
-        }
+        const isStopped =
+          Math.abs(ball.body.velocity.x) < 0.15 &&
+          Math.abs(ball.body.velocity.y) < 0.15 &&
+          Math.abs(ball.body.angularVelocity) < 0.15;
 
-        // Stop if out of bounds
-        if (
+        const isOffScreen =
           ball.body.position.x > canvas.width + 100 ||
-          ball.body.position.x < -100
-        ) {
-          state.status = "resetting";
-          setGameState("resetting");
+          ball.body.position.x < -100 ||
+          ball.body.position.y > canvas.height + 200; // Fell through floor
+
+        const isTimedOut = Date.now() - state.launchTime > 10000; // 10 seconds max flight time
+
+        if (isStopped || isOffScreen || isTimedOut) {
+          if (state.birdsRemaining > 0 && state.ball) {
+            // Next bird
+            state.birdsRemaining--;
+            setBirdsRemaining(state.birdsRemaining);
+
+            // Reset ball
+            state.ball.body.position.set(state.startPos.x, state.startPos.y);
+            state.ball.body.velocity.set(0, 0);
+            state.ball.body.angularVelocity = 0;
+            state.ball.body.setStatic(true);
+
+            state.status = "aiming";
+            setGameState("aiming");
+          } else {
+            // No birds left
+            if (pigsRemaining > 0) {
+              state.status = "resetting";
+              setGameState("resetting");
+            }
+          }
         }
       }
 
@@ -787,6 +757,7 @@ export const AngryBirdsGame = () => {
         state.ball.body.applyImpulse(impulse);
 
         state.status = "flying";
+        state.launchTime = Date.now();
         setGameState("flying");
       }
     };
@@ -805,11 +776,14 @@ export const AngryBirdsGame = () => {
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("resize", handleResize);
     };
-  }, []);
+  }, [currentLevelIndex, resetKey]);
 
   const resetGame = () => {
-    // Force a re-mount to reset everything cleanly
-    window.location.reload();
+    if (gameState === "won") {
+      setCurrentLevelIndex((prev) => (prev + 1) % levels.length);
+    } else {
+      setResetKey((prev) => prev + 1);
+    }
   };
 
   // Calculate trajectory points
@@ -998,6 +972,14 @@ export const AngryBirdsGame = () => {
       </svg>
 
       <div className="absolute top-4 left-4 flex gap-4 z-10">
+        <div className="bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg border-2 border-slate-200 flex items-center gap-2">
+          <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-red-700 relative overflow-hidden">
+            <div className="absolute top-1 right-1 w-2 h-2 bg-white rounded-full"></div>
+          </div>
+          <span className="font-black text-xl text-slate-700">
+            x {birdsRemaining}
+          </span>
+        </div>
         <div className="bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg border-2 border-slate-200 flex items-center gap-2">
           <Trophy className="w-6 h-6 text-yellow-500" />
           <span className="font-black text-xl text-slate-700">{score}</span>
