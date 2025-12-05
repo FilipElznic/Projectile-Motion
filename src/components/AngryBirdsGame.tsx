@@ -415,7 +415,7 @@ export const AngryBirdsGame = () => {
           ball.body.position.x < -100 ||
           ball.body.position.y > canvas.height + 200; // Fell through floor
 
-        const isTimedOut = Date.now() - state.launchTime > 10000; // 10 seconds max flight time
+        const isTimedOut = Date.now() - state.launchTime > 5000; // 5 seconds max flight time
 
         if (isStopped || isOffScreen || isTimedOut) {
           if (state.birdsRemaining > 0 && state.ball) {
