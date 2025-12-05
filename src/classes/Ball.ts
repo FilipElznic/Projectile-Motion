@@ -1,5 +1,6 @@
 import { Vector2 } from "./Vector2";
 import { PhysicsBody } from "./PhysicsEngine";
+import { type BirdType, BIRD_CONFIGS } from "../types/BirdTypes";
 
 /**
  * Ball - Represents a projectile in the simulation
@@ -10,20 +11,24 @@ export class Ball {
   public radius: number;
   public color: string;
   public isMoving: boolean = false; // Logic state, physics state is in body
+  public birdType: BirdType;
 
-  constructor(x: number, y: number, radius: number, color: string) {
-    this.radius = radius;
-    this.color = color;
+  constructor(x: number, y: number, birdType: BirdType = "red") {
+    this.birdType = birdType;
+    const config = BIRD_CONFIGS[birdType];
+
+    this.radius = config.radius;
+    this.color = config.color;
 
     this.body = new PhysicsBody({
       position: new Vector2(x, y),
       type: "circle",
-      radius: radius,
-      mass: 5, // Bird mass
+      radius: config.radius,
+      mass: config.mass,
       restitution: 0.6,
       friction: 0.5,
     });
-    this.body.userData = { type: "bird" };
+    this.body.userData = { type: "bird", birdType };
   }
 
   draw(ctx: CanvasRenderingContext2D) {

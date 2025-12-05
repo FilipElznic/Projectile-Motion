@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Ball } from "../classes/Ball";
 import { Vector2 } from "../classes/Vector2";
-import { Target, type TargetType } from "../classes/Target";
+import { Target } from "../classes/Target";
 import {
   PhysicsWorld,
   PhysicsBody,
@@ -19,6 +19,8 @@ import { BirdCharacter, PigCharacter } from "./game/Characters";
 import { GameUI } from "./game/GameUI";
 import { GameOverlay } from "./game/GameOverlay";
 import { Background } from "./game/Background";
+import { type BirdType, BIRD_CONFIGS } from "../types/BirdTypes";
+import { BirdQueueDisplay } from "./game/BirdQueue";
 
 export const AngryBirdsGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -57,6 +59,7 @@ export const AngryBirdsGame = () => {
   const [ball, setBall] = useState<Ball | null>(null);
   const [targets, setTargets] = useState<Target[]>([]);
   const [isDizzy, setIsDizzy] = useState(false);
+  const [birdQueue, setBirdQueue] = useState<BirdType[]>([]);
 
   // Game state refs to be accessible inside loop
   const gameStateRef = useRef({
@@ -77,6 +80,7 @@ export const AngryBirdsGame = () => {
     launchTime: 0,
     gravityEnabled: false,
     gravityTimeout: null as number | null,
+    birdQueue: [] as BirdType[],
     // Callbacks for juice
     onShake: () => {},
     onExplode: (_x: number, _y: number, _color: string) => {
@@ -156,12 +160,27 @@ export const AngryBirdsGame = () => {
       ground.userData = { type: "floor" };
       state.world.addBody(ground);
 
-      // Reset ball
-      state.ball = new Ball(state.startPos.x, state.startPos.y, 20, "#D62412");
+      // Load Level
+      const level = levels[currentLevelIndex] || levels[0];
+
+      // Initialize bird queue
+      const birdTypes: BirdType[] =
+        level.birdTypes || Array(level.birds).fill("red");
+
+      // Create first bird (remove it from queue first)
+      const firstBirdType = birdTypes.shift() || "red";
+      state.ball = new Ball(state.startPos.x, state.startPos.y, firstBirdType);
       // Keep the bird parked in the sling until the player drags it.
       state.ball.body.setStatic(true);
       state.ball.body.position.set(state.startPos.x, state.startPos.y);
       state.world.addBody(state.ball.body);
+
+      // Now set the queue with remaining birds (excluding the one in slingshot)
+      state.birdQueue = [...birdTypes];
+      setBirdQueue([...birdTypes]);
+
+      state.birdsRemaining = state.birdQueue.length;
+      setBirdsRemaining(state.birdsRemaining);
 
       // Create targets (Level Structure)
       state.targets = [];
@@ -174,18 +193,13 @@ export const AngryBirdsGame = () => {
         y: number,
         w: number,
         h: number,
-        type: TargetType
+        type: import("../classes/Target").TargetType
       ) => {
         // Adjust y to be center
         const t = new Target(x, y, w, h, type);
         state.targets.push(t);
         state.world.addBody(t.body);
       };
-
-      // Load Level
-      const level = levels[currentLevelIndex] || levels[0];
-      state.birdsRemaining = level.birds - 1; // One is in the sling
-      setBirdsRemaining(state.birdsRemaining);
 
       const gap = 2;
       level.targets.forEach((t) => {
@@ -337,18 +351,24 @@ export const AngryBirdsGame = () => {
 
       if (!ball) return;
 
-      // Draw floor
-      // Dirt bottom
-      ctx.fillStyle = "#795548"; // Brown dirt
+      // Draw floor with two-layer look
+      // Dirt bottom layer
+      ctx.fillStyle = "#8B4513"; // Saddle brown dirt
       ctx.fillRect(0, canvas.height - FLOOR_HEIGHT, canvas.width, FLOOR_HEIGHT);
 
-      // Grass top (h-4 approx 16px)
-      ctx.fillStyle = "#48bb78"; // Green grass
-      ctx.fillRect(0, canvas.height - FLOOR_HEIGHT, canvas.width, 16);
+      // Grass top layer (h-4 = 16px)
+      const grassHeight = 16;
+      ctx.fillStyle = "#7CB342"; // Light green grass
+      ctx.fillRect(0, canvas.height - FLOOR_HEIGHT, canvas.width, grassHeight);
 
-      // Darker grass border
-      ctx.fillStyle = "#38a169";
-      ctx.fillRect(0, canvas.height - FLOOR_HEIGHT + 12, canvas.width, 4);
+      // Darker grass border for depth
+      ctx.fillStyle = "#558B2F";
+      ctx.fillRect(
+        0,
+        canvas.height - FLOOR_HEIGHT + grassHeight - 4,
+        canvas.width,
+        4
+      );
 
       // Keep bird snapped to sling while aiming
       if (state.status === "aiming" && !state.isDragging && ball) {
@@ -359,25 +379,50 @@ export const AngryBirdsGame = () => {
       }
 
       // Draw slingshot (back)
-      // Wooden pole
+      // Wooden pole with texture
       const slingBaseY = canvas.height - FLOOR_HEIGHT;
-      const poleWidth = 10;
-      ctx.fillStyle = "#8D6E63"; // Wood
+      const poleWidth = 12;
+      const poleHeight = slingBaseY - state.startPos.y;
+
+      // Base wood color
+      ctx.fillStyle = "#A0826D";
       ctx.fillRect(
         state.startPos.x - poleWidth / 2,
         state.startPos.y,
         poleWidth,
-        slingBaseY - state.startPos.y
+        poleHeight
       );
 
-      // Wood texture detail
+      // Dark wood border (left and right)
       ctx.fillStyle = "#5D4037";
       ctx.fillRect(
-        state.startPos.x - 2,
+        state.startPos.x - poleWidth / 2,
         state.startPos.y,
         2,
-        slingBaseY - state.startPos.y
+        poleHeight
       );
+      ctx.fillRect(
+        state.startPos.x + poleWidth / 2 - 2,
+        state.startPos.y,
+        2,
+        poleHeight
+      );
+
+      // Wood grain lines
+      ctx.strokeStyle = "#8D6E63";
+      ctx.lineWidth = 1.5;
+      const grainSpacing = 20;
+      for (let i = 0; i < poleHeight / grainSpacing; i++) {
+        const y = state.startPos.y + i * grainSpacing;
+        ctx.beginPath();
+        ctx.moveTo(state.startPos.x - poleWidth / 2 + 2, y);
+        ctx.lineTo(state.startPos.x + poleWidth / 2 - 2, y);
+        ctx.stroke();
+      }
+
+      // Highlight for rounded look
+      ctx.fillStyle = "rgba(188, 170, 164, 0.3)";
+      ctx.fillRect(state.startPos.x - 1, state.startPos.y, 2, poleHeight);
 
       // Draw slingshot band (back)
       // Removed canvas drawing for bands to use SVG overlay
@@ -418,16 +463,28 @@ export const AngryBirdsGame = () => {
         const isTimedOut = Date.now() - state.launchTime > 5000; // 5 seconds max flight time
 
         if (isStopped || isOffScreen || isTimedOut) {
-          if (state.birdsRemaining > 0 && state.ball) {
-            // Next bird
-            state.birdsRemaining--;
-            setBirdsRemaining(state.birdsRemaining);
+          if (state.birdQueue.length > 0 && state.ball) {
+            // Remove old bird
+            state.world.removeBody(state.ball.body);
 
-            // Reset ball
-            state.ball.body.position.set(state.startPos.x, state.startPos.y);
-            state.ball.body.velocity.set(0, 0);
-            state.ball.body.angularVelocity = 0;
+            // Get next bird type from queue
+            const nextBirdType = state.birdQueue.shift() || "red";
+
+            // Create new bird at slingshot position
+            state.ball = new Ball(
+              state.startPos.x,
+              state.startPos.y,
+              nextBirdType
+            );
             state.ball.body.setStatic(true);
+            state.ball.body.position.set(state.startPos.x, state.startPos.y);
+            state.world.addBody(state.ball.body);
+
+            // Update state
+            state.birdsRemaining = state.birdQueue.length;
+            setBirdsRemaining(state.birdsRemaining);
+            setBirdQueue([...state.birdQueue]);
+            setBall(state.ball);
 
             state.status = "aiming";
             setGameState("aiming");
@@ -572,13 +629,15 @@ export const AngryBirdsGame = () => {
         state.ball.body.setStatic(false); // Wake up
 
         const force = Vector2.sub(state.startPos, state.ball.body.position);
-        // Impulse = Force * time? No, we just apply an impulse directly.
-        // The drag vector is the direction and magnitude.
 
-        // Scale it
+        // Get bird type config for launch power multiplier
+        const birdConfig = BIRD_CONFIGS[state.ball.birdType];
+        const powerMultiplier = birdConfig.launchPowerMultiplier;
+
+        // Scale it with bird-specific power
         const impulse = Vector2.mult(
           force,
-          LAUNCH_POWER * state.ball.body.mass
+          LAUNCH_POWER * state.ball.body.mass * powerMultiplier
         );
         state.ball.body.applyImpulse(impulse);
 
@@ -587,7 +646,6 @@ export const AngryBirdsGame = () => {
         setGameState("flying");
       }
     };
-
     initLevel();
     loop();
 
@@ -650,6 +708,11 @@ export const AngryBirdsGame = () => {
       {/* Dynamic Background */}
       <Background />
 
+      {/* Bird Queue Display - On ground next to Slingshot */}
+      <div className="absolute left-[0%] bottom-[4%] z-40">
+        <BirdQueueDisplay queue={birdQueue} />
+      </div>
+
       {/* Juice Layer */}
       {explosions.map((e) => (
         <ParticleExplosion key={e.id} x={e.x} y={e.y} color={e.color} />
@@ -689,6 +752,7 @@ export const AngryBirdsGame = () => {
                   : "dizzy"
               }
               angle={ball.body.angle}
+              birdType={ball.birdType}
             />
           </div>
         )}

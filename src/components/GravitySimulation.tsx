@@ -41,7 +41,7 @@ export const GravitySimulation = () => {
       world.addBody(floor);
 
       // Start high up
-      ball = new Ball(canvas.width / 2, 60, 25, "#D62412");
+      ball = new Ball(canvas.width / 2, 60, "red");
       ball.body.restitution = 0.8; // Bouncy
       world.addBody(ball.body);
     };

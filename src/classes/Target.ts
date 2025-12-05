@@ -116,50 +116,87 @@ export class Target {
     switch (this.type) {
       case "wood":
         // Wood: Brown with a border and a "plank" look
-        ctx.fillStyle = "#8D6E63";
+        // Base wood color
+        ctx.fillStyle = "#A0826D";
         ctx.fillRect(-w / 2, -h / 2, w, h);
 
+        // Dark brown border
         ctx.strokeStyle = "#5D4037";
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.strokeRect(-w / 2, -h / 2, w, h);
 
-        // Inner border for plank look
-        ctx.strokeRect(-w / 2 + 5, -h / 2 + 5, w - 10, h - 10);
+        // Wood grain lines for plank look
+        ctx.strokeStyle = "#8D6E63";
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 3; i++) {
+          const y = -h / 2 + (i + 1) * (h / 4);
+          ctx.beginPath();
+          ctx.moveTo(-w / 2 + 5, y);
+          ctx.lineTo(w / 2 - 5, y);
+          ctx.stroke();
+        }
+
+        // Inner border highlight
+        ctx.strokeStyle = "#BCAAA4";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-w / 2 + 3, -h / 2 + 3, w - 6, h - 6);
         break;
 
       case "stone":
         // Stone: Grey with a slightly rough texture or border
+        // Base stone color
         ctx.fillStyle = "#9E9E9E";
         ctx.fillRect(-w / 2, -h / 2, w, h);
 
-        ctx.strokeStyle = "#616161";
-        ctx.lineWidth = 3;
+        // Dark grey border
+        ctx.strokeStyle = "#424242";
+        ctx.lineWidth = 4;
         ctx.strokeRect(-w / 2, -h / 2, w, h);
 
-        // Rough texture details
+        // Rough texture details (random-looking spots)
         ctx.fillStyle = "#757575";
         ctx.beginPath();
-        ctx.arc(-w / 4, -h / 4, 3, 0, Math.PI * 2);
-        ctx.arc(w / 4, h / 4, 4, 0, Math.PI * 2);
-        ctx.arc(w / 6, -h / 6, 2, 0, Math.PI * 2);
+        ctx.arc(-w / 4, -h / 4, 4, 0, Math.PI * 2);
+        ctx.arc(w / 4, h / 4, 5, 0, Math.PI * 2);
+        ctx.arc(w / 6, -h / 6, 3, 0, Math.PI * 2);
+        ctx.arc(-w / 6, h / 6, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Light spots for stone texture
+        ctx.fillStyle = "#BDBDBD";
+        ctx.beginPath();
+        ctx.arc(w / 3, 0, 3, 0, Math.PI * 2);
+        ctx.arc(-w / 3, h / 5, 2, 0, Math.PI * 2);
         ctx.fill();
         break;
 
       case "ice":
         // Glass: Light blue/transparent with a white reflection streak
-        ctx.fillStyle = "rgba(179, 229, 252, 0.9)";
+        // Semi-transparent light blue base
+        ctx.fillStyle = "rgba(179, 229, 252, 0.8)";
         ctx.fillRect(-w / 2, -h / 2, w, h);
 
-        ctx.strokeStyle = "#4FC3F7";
-        ctx.lineWidth = 2;
+        // Light blue border
+        ctx.strokeStyle = "rgba(79, 195, 247, 0.9)";
+        ctx.lineWidth = 3;
         ctx.strokeRect(-w / 2, -h / 2, w, h);
 
-        // Reflection streak
-        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        // White reflection streak (top-left diagonal)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
         ctx.beginPath();
         ctx.moveTo(-w / 2 + 5, -h / 2 + 5);
-        ctx.lineTo(0, -h / 2 + 5);
-        ctx.lineTo(-w / 2 + 5, 0);
+        ctx.lineTo(-w / 4, -h / 2 + 5);
+        ctx.lineTo(-w / 2 + 5, -h / 4);
+        ctx.closePath();
+        ctx.fill();
+
+        // Secondary smaller reflection
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.beginPath();
+        ctx.moveTo(w / 4, h / 4);
+        ctx.lineTo(w / 2 - 5, h / 4);
+        ctx.lineTo(w / 4, h / 2 - 5);
+        ctx.closePath();
         ctx.fill();
         break;
 

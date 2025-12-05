@@ -79,9 +79,9 @@ export const CollisionSimulation = () => {
       staticBodies.forEach((body) => world.addBody(body));
 
       balls = [
-        new Ball(100, 100, 30, "#D62412"),
-        new Ball(canvas.width - 100, 150, 30, "#FFCE00"),
-        new Ball(canvas.width / 2, 200, 20, "#ffffff"),
+        new Ball(100, 100, "red"),
+        new Ball(canvas.width - 100, 150, "yellow"),
+        new Ball(canvas.width / 2, 200, "blue"),
       ];
 
       // Setup balls

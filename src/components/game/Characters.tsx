@@ -1,18 +1,57 @@
+import { type BirdType } from "../../types/BirdTypes";
+
 export const BirdCharacter = ({
   state,
   angle,
+  birdType = "red",
 }: {
   state: "idle" | "flying" | "dizzy";
   angle: number;
+  birdType?: BirdType;
 }) => {
+  const getBirdColors = (type: BirdType) => {
+    switch (type) {
+      case "red":
+        return {
+          body: "bg-red-500",
+          border: "border-red-700",
+          highlight: "bg-red-200",
+        };
+      case "blue":
+        return {
+          body: "bg-blue-500",
+          border: "border-blue-700",
+          highlight: "bg-blue-200",
+        };
+      case "yellow":
+        return {
+          body: "bg-yellow-400",
+          border: "border-yellow-600",
+          highlight: "bg-yellow-100",
+        };
+      default:
+        return {
+          body: "bg-red-500",
+          border: "border-red-700",
+          highlight: "bg-red-200",
+        };
+    }
+  };
+
+  const colors = getBirdColors(birdType);
+
   return (
     <div
       className="w-full h-full relative"
       style={{ transform: `rotate(${angle}rad)` }}
     >
       {/* Body */}
-      <div className="absolute inset-0 bg-red-500 rounded-full shadow-inner border-2 border-red-700 overflow-hidden">
-        <div className="absolute bottom-0 w-full h-1/3 bg-red-200 opacity-30 rounded-b-full"></div>
+      <div
+        className={`absolute inset-0 ${colors.body} rounded-full shadow-inner border-2 ${colors.border} overflow-hidden`}
+      >
+        <div
+          className={`absolute bottom-0 w-full h-1/3 ${colors.highlight} opacity-30 rounded-b-full`}
+        ></div>
       </div>
 
       {/* Eyes Container */}

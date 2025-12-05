@@ -1,4 +1,5 @@
 import type { TargetType } from "../classes/Target";
+import type { BirdType } from "../types/BirdTypes";
 
 export interface TargetDef {
   x: number; // Multiplier of blockSize relative to baseX
@@ -10,6 +11,7 @@ export interface TargetDef {
 
 export interface LevelConfig {
   birds: number;
+  birdTypes?: BirdType[]; // Optional: specific bird types for this level
   targets: TargetDef[];
 }
 
@@ -17,6 +19,7 @@ export const levels: LevelConfig[] = [
   // Level 1 (Existing)
   {
     birds: 4,
+    birdTypes: ["red", "blue", "yellow", "red"],
     targets: [
       // Base stones
       { x: -1, y: 1, w: 1, h: 1, type: "stone" },
@@ -42,6 +45,7 @@ export const levels: LevelConfig[] = [
   // Level 2: Pyramid
   {
     birds: 4,
+    birdTypes: ["yellow", "red", "blue", "yellow"],
     targets: [
       // Row 1
       { x: -2, y: 1, w: 1, h: 1, type: "stone" },
@@ -68,6 +72,7 @@ export const levels: LevelConfig[] = [
   // Level 3: Fort
   {
     birds: 4,
+    birdTypes: ["red", "yellow", "blue", "red"],
     targets: [
       // Left Pillar
       { x: -3, y: 1, w: 1, h: 1, type: "stone" },
