@@ -1,10 +1,21 @@
+import { useState } from "react";
 import { AngryBirdsGame } from "../components/AngryBirdsGame";
+import { SimulationStats } from "../components/stats/SimulationStats";
+import type { FlightDataPoint } from "../types/FlightData";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
 export const SimulationPage = () => {
+  const [flightData, setFlightData] = useState<FlightDataPoint[]>([]);
+  const [birdMass, setBirdMass] = useState(1);
+
+  const handleFlightComplete = (data: FlightDataPoint[], mass: number) => {
+    setFlightData(data);
+    setBirdMass(mass);
+  };
+
   return (
-    <div className="fixed inset-0 bg-slate-900 p-4 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-slate-900 p-4 flex flex-col">
       <header className="flex-none mb-4 flex items-center justify-between max-w-7xl mx-auto w-full z-10">
         <Link
           to="/"
@@ -19,8 +30,8 @@ export const SimulationPage = () => {
         {/* Spacer for centering */}
       </header>
 
-      <div className="flex-1 flex items-center justify-center w-full min-h-0">
-        <main className="w-full max-w-7xl h-full md:h-auto md:aspect-video md:max-h-[80vh] bg-[#46C6F6] rounded-[2rem] md:rounded-[3rem] border-8 border-white/20 shadow-2xl overflow-hidden relative ring-1 ring-white/10">
+      <div className="flex-none flex items-center justify-center w-full mb-12">
+        <main className="w-full max-w-7xl aspect-video max-h-[80vh] bg-[#46C6F6] rounded-[2rem] md:rounded-[3rem] border-8 border-white/20 shadow-2xl overflow-hidden relative ring-1 ring-white/10">
           {/* Sky Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white/20 pointer-events-none"></div>
 
@@ -28,8 +39,13 @@ export const SimulationPage = () => {
           <div className="absolute top-10 left-10 w-32 h-12 bg-white/40 rounded-full blur-xl animate-pulse"></div>
           <div className="absolute top-20 right-20 w-48 h-16 bg-white/30 rounded-full blur-xl animate-pulse delay-700"></div>
 
-          <AngryBirdsGame />
+          <AngryBirdsGame onFlightComplete={handleFlightComplete} />
         </main>
+      </div>
+
+      {/* Statistics Section */}
+      <div className="w-full bg-slate-900/50 backdrop-blur-sm">
+        <SimulationStats flightData={flightData} birdMass={birdMass} />
       </div>
     </div>
   );

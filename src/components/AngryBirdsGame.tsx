@@ -21,8 +21,13 @@ import { GameOverlay } from "./game/GameOverlay";
 import { Background } from "./game/Background";
 import { type BirdType, BIRD_CONFIGS } from "../types/BirdTypes";
 import { BirdQueueDisplay } from "./game/BirdQueue";
+import type { FlightDataPoint } from "../types/FlightData";
 
-export const AngryBirdsGame = () => {
+interface AngryBirdsGameProps {
+  onFlightComplete?: (data: FlightDataPoint[], mass: number) => void;
+}
+
+export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
@@ -81,6 +86,8 @@ export const AngryBirdsGame = () => {
     gravityEnabled: false,
     gravityTimeout: null as number | null,
     birdQueue: [] as BirdType[],
+    currentFlightData: [] as FlightDataPoint[],
+    isCollidingFrame: false,
     // Callbacks for juice
     onShake: () => {},
     onExplode: (_x: number, _y: number, _color: string) => {
@@ -164,8 +171,10 @@ export const AngryBirdsGame = () => {
       const level = levels[currentLevelIndex] || levels[0];
 
       // Initialize bird queue
-      const birdTypes: BirdType[] =
-        level.birdTypes || Array(level.birds).fill("red");
+      // Create a copy of the array to avoid mutating the original level config
+      const birdTypes: BirdType[] = level.birdTypes
+        ? [...level.birdTypes]
+        : Array(level.birds).fill("red");
 
       // Create first bird (remove it from queue first)
       const firstBirdType = birdTypes.shift() || "red";
@@ -179,7 +188,7 @@ export const AngryBirdsGame = () => {
       state.birdQueue = [...birdTypes];
       setBirdQueue([...birdTypes]);
 
-      state.birdsRemaining = state.birdQueue.length;
+      state.birdsRemaining = state.birdQueue.length + 1; // +1 for current bird in slingshot
       setBirdsRemaining(state.birdsRemaining);
 
       // Create targets (Level Structure)
@@ -226,6 +235,10 @@ export const AngryBirdsGame = () => {
         const typeA = bodyA.userData["type"];
         const typeB = bodyB.userData["type"];
 
+        if (typeA === "bird" || typeB === "bird") {
+          state.isCollidingFrame = true;
+        }
+
         // Calculate relative velocity magnitude
         // We can approximate impact force by the relative velocity
         // But we need the velocity *before* resolution.
@@ -252,6 +265,7 @@ export const AngryBirdsGame = () => {
             if (!target || target.isHit) return;
 
             target.health -= damage;
+            target.updateDamageState();
 
             // Particle effects on hit
             let particleColor = "#8D6E63"; // Wood
@@ -266,7 +280,31 @@ export const AngryBirdsGame = () => {
               particleColor
             );
 
-            if (target.health <= 0) {
+            // Check if block should split
+            if (target.shouldSplit()) {
+              const pieces = target.createSplitPieces();
+
+              // Add new pieces to the world and targets array
+              pieces.forEach((piece) => {
+                state.targets.push(piece);
+                state.world.addBody(piece.body);
+              });
+
+              // Remove the original block
+              target.isHit = true;
+              state.world.removeBody(targetBody);
+
+              // Award half score for splitting
+              const scoreVal = Math.floor(target.getScore() * 0.5);
+              state.score += scoreVal;
+              setScore(state.score);
+
+              state.onPopup(
+                targetBody.position.x,
+                targetBody.position.y,
+                scoreVal
+              );
+            } else if (target.health <= 0) {
               target.isHit = true;
               const scoreVal = target.getScore();
               state.score += scoreVal;
@@ -304,6 +342,20 @@ export const AngryBirdsGame = () => {
       // Step physics
       // Use a fixed time step or delta time
       state.world.step(1 / 60);
+
+      // Record flight data
+      if (state.status === "flying" && state.ball) {
+        const t = (Date.now() - state.launchTime) / 1000;
+        state.currentFlightData.push({
+          time: t,
+          x: state.ball.body.position.x,
+          y: canvas.height - FLOOR_HEIGHT - state.ball.body.position.y, // Height relative to floor
+          vx: state.ball.body.velocity.x,
+          vy: -state.ball.body.velocity.y, // Invert vy so up is positive
+          isColliding: state.isCollidingFrame,
+        });
+      }
+      state.isCollidingFrame = false;
 
       const applyFloorClamp = (body: PhysicsBody) => {
         if (body.isStatic) return;
@@ -463,6 +515,12 @@ export const AngryBirdsGame = () => {
         const isTimedOut = Date.now() - state.launchTime > 5000; // 5 seconds max flight time
 
         if (isStopped || isOffScreen || isTimedOut) {
+          // Flight complete - send stats
+          if (onFlightComplete && state.ball) {
+            onFlightComplete(state.currentFlightData, state.ball.body.mass);
+          }
+          state.currentFlightData = [];
+
           if (state.birdQueue.length > 0 && state.ball) {
             // Remove old bird
             state.world.removeBody(state.ball.body);
@@ -660,7 +718,7 @@ export const AngryBirdsGame = () => {
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("resize", handleResize);
     };
-  }, [currentLevelIndex, resetKey]);
+  }, [currentLevelIndex, resetKey, onFlightComplete]);
 
   const resetGame = () => {
     if (gameState === "won") {
@@ -700,97 +758,98 @@ export const AngryBirdsGame = () => {
   }
 
   return (
-    <div
-      className={`relative w-full h-full overflow-hidden ${
-        isShaking ? "animate-shake" : ""
-      }`}
-    >
-      {/* Dynamic Background */}
+    <>
+      {/* Dynamic Background - Outside main container */}
       <Background />
 
-      {/* Bird Queue Display - On ground next to Slingshot */}
-      <div className="absolute left-[0%] bottom-[4%] z-40">
-        <BirdQueueDisplay queue={birdQueue} />
-      </div>
+      <div
+        className={`relative w-full h-full overflow-hidden ${
+          isShaking ? "animate-shake" : ""
+        }`}
+      >
+        {/* Bird Queue Display - On ground next to Slingshot */}
+        <div className="absolute left-[0%] bottom-[4%] z-40">
+          <BirdQueueDisplay queue={birdQueue} />
+        </div>
 
-      {/* Juice Layer */}
-      {explosions.map((e) => (
-        <ParticleExplosion key={e.id} x={e.x} y={e.y} color={e.color} />
-      ))}
-      {popups.map((p) => (
-        <ScorePopup key={p.id} x={p.x} y={p.y} score={p.score} />
-      ))}
+        {/* Juice Layer */}
+        {explosions.map((e) => (
+          <ParticleExplosion key={e.id} x={e.x} y={e.y} color={e.color} />
+        ))}
+        {popups.map((p) => (
+          <ScorePopup key={p.id} x={p.x} y={p.y} score={p.score} />
+        ))}
 
-      {/* Character Overlay */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
-        {/* Bird */}
-        {ball && (
-          <div
-            ref={birdRef}
-            className="absolute origin-center will-change-transform"
-            style={{
-              width: ball.radius * 2,
-              height: ball.radius * 2,
-              left: 0,
-              top: 0,
-              // Initial position
-              transform: `translate(${ball.body.position.x - ball.radius}px, ${
-                ball.body.position.y - ball.radius
-              }px)`,
-            }}
-          >
-            <BirdCharacter
-              state={
-                isDizzy
-                  ? "dizzy"
-                  : gameState === "aiming" ||
-                    gameState === "resetting" ||
-                    gameState === "won"
-                  ? "idle"
-                  : gameState === "flying"
-                  ? "flying"
-                  : "dizzy"
-              }
-              angle={ball.body.angle}
-              birdType={ball.birdType}
-            />
-          </div>
-        )}
-
-        {/* Pigs */}
-        {targets
-          .filter((t) => t.type === "pig" && !t.isHit)
-          .map((pig) => (
+        {/* Character Overlay */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
+          {/* Bird */}
+          {ball && (
             <div
-              key={pig.body.id}
-              ref={(el) => {
-                if (el) pigRefs.current.set(pig.body.id, el);
-                else pigRefs.current.delete(pig.body.id);
-              }}
-              className="absolute origin-center will-change-transform bg-red-800"
+              ref={birdRef}
+              className="absolute origin-center will-change-transform"
               style={{
-                width: pig.width,
-                height: pig.height,
+                width: ball.radius * 2,
+                height: ball.radius * 2,
                 left: 0,
                 top: 0,
+                // Initial position
                 transform: `translate(${
-                  pig.body.position.x - pig.width / 2
-                }px, ${pig.body.position.y - pig.height / 2}px) rotate(${
-                  pig.body.angle
-                }rad)`,
+                  ball.body.position.x - ball.radius
+                }px, ${ball.body.position.y - ball.radius}px)`,
               }}
             >
-              <PigCharacter state={pigStates[pig.body.id] || "idle"} />
+              <BirdCharacter
+                state={
+                  isDizzy
+                    ? "dizzy"
+                    : gameState === "aiming" ||
+                      gameState === "resetting" ||
+                      gameState === "won"
+                    ? "idle"
+                    : gameState === "flying"
+                    ? "flying"
+                    : "dizzy"
+                }
+                angle={ball.body.angle}
+                birdType={ball.birdType}
+              />
             </div>
-          ))}
-      </div>
+          )}
 
-      {/* SVG Overlay for Bands and Trajectory */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
-        {dragState.isDragging && dragState.birdPos && dragState.startPos && (
-          <>
-            {/* Back Band (Behind Bird - rendered first) */}
-            {/* Note: Since SVG is on top of canvas, this will be on top of everything on canvas unless we use z-index tricks.
+          {/* Pigs */}
+          {targets
+            .filter((t) => t.type === "pig" && !t.isHit)
+            .map((pig) => (
+              <div
+                key={pig.body.id}
+                ref={(el) => {
+                  if (el) pigRefs.current.set(pig.body.id, el);
+                  else pigRefs.current.delete(pig.body.id);
+                }}
+                className="absolute origin-center will-change-transform bg-red-800"
+                style={{
+                  width: pig.width,
+                  height: pig.height,
+                  left: 0,
+                  top: 0,
+                  transform: `translate(${
+                    pig.body.position.x - pig.width / 2
+                  }px, ${pig.body.position.y - pig.height / 2}px) rotate(${
+                    pig.body.angle
+                  }rad)`,
+                }}
+              >
+                <PigCharacter state={pigStates[pig.body.id] || "idle"} />
+              </div>
+            ))}
+        </div>
+
+        {/* SVG Overlay for Bands and Trajectory */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
+          {dragState.isDragging && dragState.birdPos && dragState.startPos && (
+            <>
+              {/* Back Band (Behind Bird - rendered first) */}
+              {/* Note: Since SVG is on top of canvas, this will be on top of everything on canvas unless we use z-index tricks.
                   But we can't put SVG between canvas layers.
                   However, the prompt asked for SVG lines.
                   If we want "Behind Bird", we have a problem if Bird is on Canvas.
@@ -805,54 +864,57 @@ export const AngryBirdsGame = () => {
                   Let's just render them. The user might not notice the z-index issue if the band connects to the center of the bird.
                   Or we can offset the connection point.
               */}
-            <line
-              x1={dragState.startPos.x - 10}
-              y1={dragState.startPos.y}
-              x2={dragState.birdPos.x}
-              y2={dragState.birdPos.y}
-              stroke="#3E2723"
-              strokeWidth="6"
-              strokeLinecap="round"
-            />
-
-            {/* Front Band */}
-            <line
-              x1={dragState.startPos.x + 10}
-              y1={dragState.startPos.y}
-              x2={dragState.birdPos.x}
-              y2={dragState.birdPos.y}
-              stroke="#3E2723"
-              strokeWidth="6"
-              strokeLinecap="round"
-            />
-
-            {/* Trajectory Dots */}
-            {trajectoryPoints.map((p, i) => (
-              <circle
-                key={i}
-                cx={p.x}
-                cy={p.y}
-                r={4}
-                fill="white"
-                opacity={1 - i / 20}
+              <line
+                x1={dragState.startPos.x - 10}
+                y1={dragState.startPos.y}
+                x2={dragState.birdPos.x}
+                y2={dragState.birdPos.y}
+                stroke="#3E2723"
+                strokeWidth="6"
+                strokeLinecap="round"
               />
-            ))}
-          </>
-        )}
-      </svg>
 
-      <GameUI
-        birdsRemaining={birdsRemaining}
-        score={score}
-        onReset={resetGame}
-      />
+              {/* Front Band */}
+              <line
+                x1={dragState.startPos.x + 10}
+                y1={dragState.startPos.y}
+                x2={dragState.birdPos.x}
+                y2={dragState.birdPos.y}
+                stroke="#3E2723"
+                strokeWidth="6"
+                strokeLinecap="round"
+              />
 
-      <GameOverlay gameState={gameState} score={score} onReset={resetGame} />
+              {/* Trajectory Dots */}
+              {trajectoryPoints.map((p, i) => (
+                <circle
+                  key={i}
+                  cx={p.x}
+                  cy={p.y}
+                  r={4}
+                  fill="white"
+                  opacity={1 - i / 20}
+                />
+              ))}
+            </>
+          )}
+        </svg>
 
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full block cursor-crosshair rounded-3xl top-44"
-      />
-    </div>
+        <GameUI
+          birdsRemaining={birdsRemaining}
+          score={score}
+          currentLevel={currentLevelIndex + 1}
+          totalLevels={levels.length}
+          onReset={resetGame}
+        />
+
+        <GameOverlay gameState={gameState} score={score} onReset={resetGame} />
+
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full block cursor-crosshair rounded-3xl top-44"
+        />
+      </div>
+    </>
   );
 };

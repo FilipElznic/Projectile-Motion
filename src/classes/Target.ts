@@ -3,6 +3,8 @@ import { PhysicsBody } from "./PhysicsEngine";
 
 export type TargetType = "wood" | "stone" | "ice" | "pig";
 
+export type DamageState = "pristine" | "cracked" | "damaged" | "breaking";
+
 export class Target {
   public body: PhysicsBody;
   public width: number;
@@ -11,6 +13,9 @@ export class Target {
   public isHit: boolean = false;
   public health: number;
   public maxHealth: number;
+  public canSplit: boolean = true; // Can this block split?
+  public minSplitSize: number = 20; // Minimum size for splitting
+  public damageState: DamageState = "pristine";
 
   constructor(
     x: number,
@@ -109,9 +114,6 @@ export class Target {
     // Draw centered rect - use physics body size for accurate rendering
     const w = this.body.width;
     const h = this.body.height;
-
-    // Damage overlay
-    const damageRatio = 1 - this.health / this.maxHealth;
 
     switch (this.type) {
       case "wood":
@@ -235,8 +237,8 @@ export class Target {
         break;
     }
 
-    // Cracks
-    if (damageRatio > 0.3) {
+    // Cracks based on damage state
+    if (this.damageState === "cracked") {
       ctx.beginPath();
       ctx.moveTo(-w / 4, -h / 4);
       ctx.lineTo(0, 0);
@@ -244,8 +246,143 @@ export class Target {
       ctx.strokeStyle = "rgba(0,0,0,0.3)";
       ctx.lineWidth = 2;
       ctx.stroke();
+    } else if (this.damageState === "damaged") {
+      // Multiple cracks
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-w / 2, 0);
+      ctx.lineTo(w / 2, 0);
+      ctx.moveTo(0, -h / 2);
+      ctx.lineTo(0, h / 2);
+      ctx.stroke();
+
+      // Diagonal cracks
+      ctx.beginPath();
+      ctx.moveTo(-w / 3, -h / 3);
+      ctx.lineTo(w / 3, h / 3);
+      ctx.moveTo(w / 3, -h / 3);
+      ctx.lineTo(-w / 3, h / 3);
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else if (this.damageState === "breaking") {
+      // Visible break lines
+      ctx.strokeStyle = "rgba(0,0,0,0.6)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-w / 2, 0);
+      ctx.lineTo(w / 2, 0);
+      ctx.moveTo(0, -h / 2);
+      ctx.lineTo(0, h / 2);
+      ctx.stroke();
     }
 
     ctx.restore();
+  }
+
+  updateDamageState() {
+    const healthPercent = this.health / this.maxHealth;
+
+    if (healthPercent > 0.7) {
+      this.damageState = "pristine";
+    } else if (healthPercent > 0.4) {
+      this.damageState = "cracked";
+    } else if (healthPercent > 0.15) {
+      this.damageState = "damaged";
+    } else {
+      this.damageState = "breaking";
+    }
+  }
+
+  shouldSplit(): boolean {
+    // Split if in breaking state, can split, and is large enough
+    return (
+      this.damageState === "breaking" &&
+      this.canSplit &&
+      this.type !== "pig" &&
+      (this.width >= this.minSplitSize * 2 ||
+        this.height >= this.minSplitSize * 2)
+    );
+  }
+
+  createSplitPieces(): Target[] {
+    const pieces: Target[] = [];
+    const pos = this.body.position;
+
+    // Determine split direction based on dimensions
+    const splitVertically = this.width >= this.height;
+
+    if (splitVertically && this.width >= this.minSplitSize * 2) {
+      // Split into left and right pieces
+      const pieceWidth = this.width / 2;
+
+      const leftPiece = new Target(
+        pos.x - pieceWidth / 2 - this.width / 4,
+        pos.y - this.height / 2,
+        pieceWidth,
+        this.height,
+        this.type
+      );
+
+      const rightPiece = new Target(
+        pos.x + pieceWidth / 2 - this.width / 4,
+        pos.y - this.height / 2,
+        pieceWidth,
+        this.height,
+        this.type
+      );
+
+      // Inherit some properties
+      leftPiece.health = this.health * 0.6;
+      rightPiece.health = this.health * 0.6;
+      leftPiece.maxHealth = this.maxHealth * 0.5;
+      rightPiece.maxHealth = this.maxHealth * 0.5;
+      leftPiece.canSplit = pieceWidth >= this.minSplitSize * 2;
+      rightPiece.canSplit = pieceWidth >= this.minSplitSize * 2;
+
+      // Apply some velocity from the split
+      const splitForce = 50;
+      leftPiece.body.velocity.x = -splitForce;
+      rightPiece.body.velocity.x = splitForce;
+
+      pieces.push(leftPiece, rightPiece);
+    } else if (!splitVertically && this.height >= this.minSplitSize * 2) {
+      // Split into top and bottom pieces
+      const pieceHeight = this.height / 2;
+
+      const topPiece = new Target(
+        pos.x - this.width / 2,
+        pos.y - pieceHeight / 2 - this.height / 4,
+        this.width,
+        pieceHeight,
+        this.type
+      );
+
+      const bottomPiece = new Target(
+        pos.x - this.width / 2,
+        pos.y + pieceHeight / 2 - this.height / 4,
+        this.width,
+        pieceHeight,
+        this.type
+      );
+
+      // Inherit some properties
+      topPiece.health = this.health * 0.6;
+      bottomPiece.health = this.health * 0.6;
+      topPiece.maxHealth = this.maxHealth * 0.5;
+      bottomPiece.maxHealth = this.maxHealth * 0.5;
+      topPiece.canSplit = pieceHeight >= this.minSplitSize * 2;
+      bottomPiece.canSplit = pieceHeight >= this.minSplitSize * 2;
+
+      // Apply some velocity from the split
+      const splitForce = 50;
+      topPiece.body.velocity.y = -splitForce;
+      bottomPiece.body.velocity.y = splitForce;
+
+      pieces.push(topPiece, bottomPiece);
+    }
+
+    return pieces;
   }
 }

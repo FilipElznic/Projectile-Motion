@@ -16,84 +16,107 @@ export interface LevelConfig {
 }
 
 export const levels: LevelConfig[] = [
-  // Level 1 (Existing)
+  // Level 1: Simple Tower
   {
     birds: 4,
     birdTypes: ["red", "blue", "yellow", "red"],
     targets: [
-      // Base stones
-      { x: -1, y: 1, w: 1, h: 1, type: "stone" },
-      { x: 1, y: 1, w: 1, h: 1, type: "stone" },
-      // Wood plank across
-      { x: -1, y: 5, w: 3, h: 1, type: "stone" }, // x is left edge? No, in code it was baseX - blockSize.
-      // Let's stick to the code's logic.
-      // Code: createTarget(baseX - blockSize, floorY - blockSize, ...)
-      // My x will be relative to baseX in blocks.
-      // If x=-1, pos = baseX - 1*blockSize.
+      // Base foundation - wide stone base
+      { x: -3, y: 1, w: 2, h: 1, type: "stone" },
+      { x: -1, y: 1, w: 2, h: 1, type: "stone" },
+      { x: 1, y: 1, w: 2, h: 1, type: "stone" },
 
-      // Pig on top
-      // { x: 0, y: 0, w: 1, h: 1, type: "pig" },
+      // Second layer - wood platforms
+      { x: -2.5, y: 2, w: 1.5, h: 1, type: "wood" },
+      { x: -0.5, y: 2, w: 1, h: 1, type: "wood" },
+      { x: 0.5, y: 2, w: 1, h: 1, type: "wood" },
+      { x: 1.5, y: 2, w: 1.5, h: 1, type: "wood" },
 
-      // Side structures
-      { x: -2.5, y: 2, w: 1, h: 1, type: "wood" },
-      { x: -10.5, y: 2, w: 1, h: 1, type: "pig" },
+      // Vertical pillars
+      { x: -2, y: 3, w: 1, h: 2, type: "wood" },
+      { x: 0, y: 3, w: 1, h: 1, type: "pig" },
+      { x: 2, y: 3, w: 1, h: 2, type: "wood" },
 
-      { x: 2.5, y: 2, w: 1, h: 1, type: "wood" },
-      { x: 2.5, y: 2, w: 1, h: 1, type: "wood" },
+      // Top layer
+      { x: -2, y: 5, w: 2, h: 1, type: "ice" },
+      { x: 0, y: 5, w: 2, h: 1, type: "ice" },
+
+      // Crown
+      { x: -0.5, y: 6, w: 1, h: 1, type: "pig" },
     ],
   },
-  // Level 2: Pyramid
+  // Level 2: Castle Fortress
   {
-    birds: 4,
-    birdTypes: ["yellow", "red", "blue", "yellow"],
+    birds: 5,
+    birdTypes: ["yellow", "red", "blue", "yellow", "red"],
     targets: [
-      // Row 1
-      { x: -2, y: 1, w: 1, h: 1, type: "stone" },
-      { x: -1, y: 1, w: 1, h: 1, type: "wood" },
-      { x: 0, y: 1, w: 1, h: 1, type: "stone" },
-      { x: 1, y: 1, w: 1, h: 1, type: "wood" },
-      { x: 2, y: 1, w: 1, h: 1, type: "stone" },
+      // Left tower base
+      { x: -5, y: 1, w: 1, h: 3, type: "stone" },
+      { x: -4, y: 1, w: 1, h: 3, type: "stone" },
 
-      // Row 2
-      { x: -1.5, y: 2, w: 1, h: 1, type: "ice" },
-      { x: -0.5, y: 2, w: 1, h: 1, type: "pig" },
-      { x: 0.5, y: 2, w: 1, h: 1, type: "pig" },
-      { x: 1.5, y: 2, w: 1, h: 1, type: "ice" },
+      // Right tower base
+      { x: 3, y: 1, w: 1, h: 3, type: "stone" },
+      { x: 4, y: 1, w: 1, h: 3, type: "stone" },
 
-      // Row 3
+      // Left tower top
+      { x: -5, y: 4, w: 2, h: 1, type: "wood" },
+      { x: -5, y: 5, w: 1, h: 1, type: "pig" },
+      { x: -4, y: 5, w: 1, h: 1, type: "wood" },
+
+      // Right tower top
+      { x: 3, y: 4, w: 2, h: 1, type: "wood" },
+      { x: 3, y: 5, w: 1, h: 1, type: "wood" },
+      { x: 4, y: 5, w: 1, h: 1, type: "pig" },
+
+      // Central structure - multi-level
+      { x: -2, y: 1, w: 1, h: 2, type: "wood" },
+      { x: -1, y: 1, w: 2, h: 1, type: "ice" },
+      { x: 1, y: 1, w: 1, h: 2, type: "wood" },
+
+      { x: -2, y: 3, w: 1.5, h: 1, type: "wood" },
+      { x: -0.5, y: 3, w: 1, h: 1, type: "pig" },
+      { x: 0.5, y: 3, w: 1.5, h: 1, type: "wood" },
+
+      { x: -1.5, y: 4, w: 3, h: 1, type: "ice" },
+      { x: -0.5, y: 5, w: 1, h: 1, type: "pig" },
+
+      // Bridge between towers
+      { x: -3, y: 4, w: 2, h: 0.5, type: "ice" },
+      { x: 1, y: 4, w: 2, h: 0.5, type: "ice" },
+    ],
+  },
+  // Level 3: Complex Pyramid Structure
+  {
+    birds: 5,
+    birdTypes: ["red", "yellow", "blue", "red", "yellow"],
+    targets: [
+      // Bottom layer - 7 blocks wide
+      { x: -3, y: 1, w: 1, h: 1, type: "stone" },
+      { x: -2, y: 1, w: 1, h: 1, type: "wood" },
+      { x: -1, y: 1, w: 1, h: 1, type: "stone" },
+      { x: 0, y: 1, w: 1, h: 1, type: "ice" },
+      { x: 1, y: 1, w: 1, h: 1, type: "stone" },
+      { x: 2, y: 1, w: 1, h: 1, type: "wood" },
+      { x: 3, y: 1, w: 1, h: 1, type: "stone" },
+
+      // Second layer - 5 blocks
+      { x: -2, y: 2, w: 1, h: 1, type: "ice" },
+      { x: -1, y: 2, w: 1, h: 1, type: "pig" },
+      { x: 0, y: 2, w: 1, h: 1, type: "wood" },
+      { x: 1, y: 2, w: 1, h: 1, type: "pig" },
+      { x: 2, y: 2, w: 1, h: 1, type: "ice" },
+
+      // Third layer - 3 blocks
       { x: -1, y: 3, w: 1, h: 1, type: "wood" },
       { x: 0, y: 3, w: 1, h: 1, type: "stone" },
       { x: 1, y: 3, w: 1, h: 1, type: "wood" },
 
-      // Top
-      { x: 0, y: 4, w: 1, h: 1, type: "pig" },
-    ],
-  },
-  // Level 3: Fort
-  {
-    birds: 4,
-    birdTypes: ["red", "yellow", "blue", "red"],
-    targets: [
-      // Left Pillar
-      { x: -3, y: 1, w: 1, h: 1, type: "stone" },
-      { x: -3, y: 2, w: 1, h: 1, type: "stone" },
-      { x: -3, y: 3, w: 1, h: 1, type: "stone" },
+      // Fourth layer - 2 blocks
+      { x: -0.5, y: 4, w: 1, h: 1, type: "ice" },
+      { x: 0.5, y: 4, w: 1, h: 1, type: "ice" },
 
-      // Right Pillar
-      { x: 3, y: 1, w: 1, h: 1, type: "stone" },
-      { x: 3, y: 2, w: 1, h: 1, type: "stone" },
-      { x: 3, y: 3, w: 1, h: 1, type: "stone" },
-
-      // Middle
-      { x: -1, y: 1, w: 1, h: 1, type: "wood" },
-      { x: 1, y: 1, w: 1, h: 1, type: "wood" },
-      { x: 0, y: 2, w: 3, h: 1, type: "ice" }, // Bridge
-
-      // Pigs
-      { x: -3, y: 4, w: 1, h: 1, type: "pig" },
-      { x: 3, y: 4, w: 1, h: 1, type: "pig" },
-      { x: 0, y: 1, w: 1, h: 1, type: "pig" },
-      { x: 0, y: 3, w: 1, h: 1, type: "pig" },
+      // Top - single pig
+      { x: 0, y: 5, w: 1, h: 1, type: "pig" },
     ],
   },
 ];
