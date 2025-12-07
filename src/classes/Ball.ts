@@ -1,6 +1,10 @@
 import { Vector2 } from "./Vector2";
 import { PhysicsBody } from "./PhysicsEngine";
-import { type BirdType, BIRD_CONFIGS } from "../types/BirdTypes";
+import {
+  type BirdType,
+  BIRD_CONFIGS,
+  type BirdConfig,
+} from "../types/BirdTypes";
 
 /**
  * Ball - Represents a projectile in the simulation
@@ -12,13 +16,26 @@ export class Ball {
   public color: string;
   public isMoving: boolean = false; // Logic state, physics state is in body
   public birdType: BirdType;
+  public launchPowerMultiplier: number;
 
-  constructor(x: number, y: number, birdType: BirdType = "red") {
-    this.birdType = birdType;
-    const config = BIRD_CONFIGS[birdType];
+  constructor(
+    x: number,
+    y: number,
+    birdTypeOrConfig: BirdType | BirdConfig = "red"
+  ) {
+    let config: BirdConfig;
+
+    if (typeof birdTypeOrConfig === "string") {
+      this.birdType = birdTypeOrConfig;
+      config = BIRD_CONFIGS[birdTypeOrConfig];
+    } else {
+      this.birdType = birdTypeOrConfig.type;
+      config = birdTypeOrConfig;
+    }
 
     this.radius = config.radius;
     this.color = config.color;
+    this.launchPowerMultiplier = config.launchPowerMultiplier;
 
     this.body = new PhysicsBody({
       position: new Vector2(x, y),
@@ -28,7 +45,7 @@ export class Ball {
       restitution: 0.6,
       friction: 0.5,
     });
-    this.body.userData = { type: "bird", birdType };
+    this.body.userData = { type: "bird", birdType: this.birdType };
   }
 
   draw(ctx: CanvasRenderingContext2D) {

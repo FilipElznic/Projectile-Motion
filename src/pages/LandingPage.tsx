@@ -14,6 +14,7 @@ import {
   Move,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Footer } from "../components/Footer";
 
 const SimulationContainer = ({
   children,
@@ -109,6 +110,14 @@ export const LandingPage = () => {
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-4">
         <div className="text-center mb-24 relative">
+          <div className="inline-block bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-6 py-2 mb-8 transform -rotate-1 hover:rotate-0 transition-transform duration-300 cursor-default">
+            <span className="text-sky-300 font-bold">Note:</span>{" "}
+            <span className="text-slate-200 font-medium">
+              This started as a projectile motion simulation, but evolved into
+              an Angry Birds game!
+            </span>
+          </div>
+
           <h1 className="text-6xl md:text-8xl font-black text-white drop-shadow-[0_8px_0_rgba(0,0,0,0.15)] tracking-tight mb-4 transform -rotate-2">
             PROJECTILE
             <br />
@@ -124,7 +133,14 @@ export const LandingPage = () => {
             <Link to="/simulation">
               <Button3D variant="primary">
                 <span className="flex items-center gap-2">
-                  <Play fill="currentColor" /> Start Learning
+                  <Play fill="currentColor" /> Start Angry Birds Simulation
+                </span>
+              </Button3D>
+            </Link>
+            <Link to="/custom-bird">
+              <Button3D variant="secondary">
+                <span className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" /> Create Custom Bird
                 </span>
               </Button3D>
             </Link>
@@ -154,9 +170,9 @@ export const LandingPage = () => {
             </>
           }
           formulas={[
-            "v_y = v_{y0} + g \\cdot t",
-            "y = y_0 + v_{y0}t + \\frac{1}{2}gt^2",
-            "v_{new} = -v_{old} \\times 0.7",
+            "v_y = v_{y0} - g \\cdot t",
+            "y = y_0 + v_{y0}t - \\frac{1}{2}gt^2",
+            "v_{new} = -v_{old} \times 0.7",
           ]}
         >
           <GravitySimulation />
@@ -274,7 +290,67 @@ export const LandingPage = () => {
             </div>
           </Card>
         </div>
+
+        {/* About Section */}
+        <section className="mb-32">
+          <div className="bg-slate-900 rounded-[3rem] p-8 md:p-16 text-center relative overflow-hidden shadow-2xl border-b-[16px] border-slate-800">
+            {/* Background decoration */}
+            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+              <div className="absolute top-10 left-10 w-32 h-32 bg-[#FFCE00] rounded-full blur-3xl"></div>
+              <div className="absolute bottom-10 right-10 w-64 h-64 bg-[#ec3750] rounded-full blur-3xl"></div>
+            </div>
+
+            <div className="relative z-10 max-w-3xl mx-auto">
+              <h2 className="text-4xl md:text-5xl font-black text-white mb-8">
+                Why This Project?
+              </h2>
+              <p className="text-xl text-slate-300 leading-relaxed font-medium mb-12">
+                Physics shouldn't just be formulas on a chalkboard. It's the
+                hidden engine of our universe. This project was built to
+                visualize the beautiful mathematics behind projectile motion,
+                making concepts like{" "}
+                <span className="text-[#4ECDC4]">gravity</span>,{" "}
+                <span className="text-[#FF6B6B]">velocity vectors</span>, and{" "}
+                <span className="text-[#FFCE00]">energy conservation</span>{" "}
+                intuitive and tangible.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                <div className="bg-white/5 backdrop-blur p-6 rounded-2xl border border-white/10">
+                  <div className="text-[#4ECDC4] font-black text-xl mb-2">
+                    Real-time Engine
+                  </div>
+                  <p className="text-slate-400 text-sm">
+                    Custom physics engine running at 60 FPS for smooth, accurate
+                    simulations.
+                  </p>
+                </div>
+                <div className="bg-white/5 backdrop-blur p-6 rounded-2xl border border-white/10">
+                  <div className="text-[#FF6B6B] font-black text-xl mb-2">
+                    Vector Math
+                  </div>
+                  <p className="text-slate-400 text-sm">
+                    Visualizing forces and velocities as they happen in the
+                    simulation.
+                  </p>
+                </div>
+                <div className="bg-white/5 backdrop-blur p-6 rounded-2xl border border-white/10">
+                  <div className="text-[#FFCE00] font-black text-xl mb-2">
+                    Interactive Learning
+                  </div>
+                  <p className="text-slate-400 text-sm">
+                    Experiment with variables and see the immediate impact on
+                    the flight path.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

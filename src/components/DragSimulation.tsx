@@ -1,9 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Vector2 } from "../classes/Vector2";
 import { ProjectileSimulator } from "../physics/ProjectileSimulator";
+import {
+  GAME_GRAVITY,
+  LAUNCH_POWER,
+  MAX_DRAG_DISTANCE,
+} from "./game/GameConstants";
 
-const MAX_DRAG_DISTANCE = 220;
-const LAUNCH_MULTIPLIER = 6.4;
 const PATH_POINTS = 90;
 
 export const DragSimulation = () => {
@@ -44,7 +47,7 @@ export const DragSimulation = () => {
           startPosition: state.startPos,
           groundY: state.groundY,
           radius: 22,
-          gravity: 1500,
+          gravity: GAME_GRAVITY,
           restitution: 0.6,
           airDrag: 0.018,
         });
@@ -105,7 +108,7 @@ export const DragSimulation = () => {
         state.simulator.launch(
           state.startPos,
           state.simulator.position,
-          LAUNCH_MULTIPLIER
+          LAUNCH_POWER
         );
         state.hasLaunched = true;
       }
@@ -204,7 +207,7 @@ export const DragSimulation = () => {
         ctx.fillStyle = "rgba(255,255,255,0.75)";
         ctx.font = "600 18px 'Space Grotesk', sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("Click & drag the bird to launch", canvas.width / 2, 60);
+
         ctx.textAlign = "left";
       }
 

@@ -119,4 +119,130 @@ export const levels: LevelConfig[] = [
       { x: 0, y: 5, w: 1, h: 1, type: "pig" },
     ],
   },
+  // Level 4: The Great Wall
+  {
+    birds: 4,
+    birdTypes: ["blue", "yellow", "red", "blue"],
+    targets: [
+      // Wall Base
+      { x: -4, y: 1, w: 1, h: 2, type: "stone" },
+      { x: -2, y: 1, w: 1, h: 2, type: "stone" },
+      { x: 0, y: 1, w: 1, h: 2, type: "stone" },
+      { x: 2, y: 1, w: 1, h: 2, type: "stone" },
+      { x: 4, y: 1, w: 1, h: 2, type: "stone" },
+
+      // Wall Fillers
+      { x: -3, y: 1, w: 1, h: 1, type: "wood" },
+      { x: -1, y: 1, w: 1, h: 1, type: "ice" },
+      { x: 1, y: 1, w: 1, h: 1, type: "wood" },
+      { x: 3, y: 1, w: 1, h: 1, type: "ice" },
+
+      // Second Layer
+      { x: -3, y: 2, w: 1, h: 1, type: "pig" },
+      { x: -1, y: 2, w: 1, h: 1, type: "pig" },
+      { x: 1, y: 2, w: 1, h: 1, type: "pig" },
+      { x: 3, y: 2, w: 1, h: 1, type: "pig" },
+
+      // Roof
+      { x: -3, y: 3, w: 2, h: 0.5, type: "wood" },
+      { x: -1, y: 3, w: 2, h: 0.5, type: "wood" },
+      { x: 1, y: 3, w: 2, h: 0.5, type: "wood" },
+      { x: 3, y: 3, w: 2, h: 0.5, type: "wood" },
+    ],
+  },
+  // Level 5: The Bunker
+  {
+    birds: 4,
+    birdTypes: ["yellow", "red", "red", "blue"],
+    targets: [
+      // Left Wall
+      { x: -3, y: 1, w: 1, h: 3, type: "stone" },
+      // Right Wall
+      { x: 3, y: 1, w: 1, h: 3, type: "stone" },
+
+      // Roof
+      { x: 0, y: 4, w: 8, h: 1, type: "stone" },
+
+      // Interior Protection
+      { x: -1.5, y: 1, w: 1, h: 2, type: "wood" },
+      { x: 1.5, y: 1, w: 1, h: 2, type: "wood" },
+
+      // The Prize
+      { x: 0, y: 1, w: 1, h: 1, type: "pig" },
+      { x: 0, y: 2, w: 2, h: 0.5, type: "ice" },
+      { x: 0, y: 3, w: 1, h: 1, type: "pig" },
+
+      // Roof Defenders
+      { x: -2, y: 5, w: 1, h: 1, type: "pig" },
+      { x: 2, y: 5, w: 1, h: 1, type: "pig" },
+    ],
+  },
+  // Level 6: Twin Towers
+  {
+    birds: 5,
+    birdTypes: ["red", "blue", "yellow", "red", "blue"],
+    targets: [
+      // Left Tower
+      { x: -4, y: 1, w: 1.5, h: 4, type: "stone" },
+      { x: -4, y: 5, w: 2, h: 1, type: "wood" },
+      { x: -4, y: 6, w: 1, h: 1, type: "pig" },
+
+      // Right Tower
+      { x: 4, y: 1, w: 1.5, h: 4, type: "stone" },
+      { x: 4, y: 5, w: 2, h: 1, type: "wood" },
+      { x: 4, y: 6, w: 1, h: 1, type: "pig" },
+
+      // The Bridge
+      { x: 0, y: 3, w: 6, h: 0.5, type: "wood" },
+
+      // Bridge Dwellers
+      { x: -1, y: 3.5, w: 1, h: 1, type: "ice" },
+      { x: 0, y: 3.5, w: 1, h: 1, type: "pig" },
+      { x: 1, y: 3.5, w: 1, h: 1, type: "ice" },
+
+      // Under Bridge
+      { x: 0, y: 1, w: 1, h: 1, type: "pig" },
+    ],
+  },
+  // Level 7: The Pyramid
+  {
+    birds: 6,
+    birdTypes: ["yellow", "red", "blue", "yellow", "red", "blue"],
+    targets: [
+      // Base (9 wide)
+      { x: -4, y: 1, w: 1, h: 1, type: "stone" },
+      { x: -3, y: 1, w: 1, h: 1, type: "wood" },
+      { x: -2, y: 1, w: 1, h: 1, type: "stone" },
+      { x: -1, y: 1, w: 1, h: 1, type: "wood" },
+      { x: 0, y: 1, w: 1, h: 1, type: "stone" },
+      { x: 1, y: 1, w: 1, h: 1, type: "wood" },
+      { x: 2, y: 1, w: 1, h: 1, type: "stone" },
+      { x: 3, y: 1, w: 1, h: 1, type: "wood" },
+      { x: 4, y: 1, w: 1, h: 1, type: "stone" },
+
+      // Layer 2 (7 wide)
+      { x: -3, y: 2, w: 1, h: 1, type: "ice" },
+      { x: -2, y: 2, w: 1, h: 1, type: "pig" },
+      { x: -1, y: 2, w: 1, h: 1, type: "ice" },
+      { x: 0, y: 2, w: 1, h: 1, type: "wood" },
+      { x: 1, y: 2, w: 1, h: 1, type: "ice" },
+      { x: 2, y: 2, w: 1, h: 1, type: "pig" },
+      { x: 3, y: 2, w: 1, h: 1, type: "ice" },
+
+      // Layer 3 (5 wide)
+      { x: -2, y: 3, w: 1, h: 1, type: "stone" },
+      { x: -1, y: 3, w: 1, h: 1, type: "wood" },
+      { x: 0, y: 3, w: 1, h: 1, type: "pig" },
+      { x: 1, y: 3, w: 1, h: 1, type: "wood" },
+      { x: 2, y: 3, w: 1, h: 1, type: "stone" },
+
+      // Layer 4 (3 wide)
+      { x: -1, y: 4, w: 1, h: 1, type: "ice" },
+      { x: 0, y: 4, w: 1, h: 1, type: "stone" },
+      { x: 1, y: 4, w: 1, h: 1, type: "ice" },
+
+      // Top
+      { x: 0, y: 5, w: 1, h: 1, type: "pig" },
+    ],
+  },
 ];

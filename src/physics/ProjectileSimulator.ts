@@ -17,6 +17,9 @@ export class ProjectileSimulator {
   velocity: Vector2;
   radius: number;
   startPosition: Vector2;
+  angularVelocity: number = 0;
+  sleepTimer: number = 0;
+  isSleeping: boolean = false;
 
   private gravity: number;
   private restitution: number;

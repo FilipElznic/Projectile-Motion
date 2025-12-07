@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Ball } from "../classes/Ball";
 import { PhysicsWorld, PhysicsBody } from "../classes/PhysicsEngine";
 import { Vector2 } from "../classes/Vector2";
+import { GAME_GRAVITY } from "./game/GameConstants";
 
 export const GravitySimulation = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -24,7 +25,7 @@ export const GravitySimulation = () => {
         canvas.height = parent.clientHeight;
       }
 
-      world = new PhysicsWorld();
+      world = new PhysicsWorld(new Vector2(0, GAME_GRAVITY));
 
       const groundY = canvas.height - groundHeight / 2;
 

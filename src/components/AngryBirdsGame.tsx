@@ -19,16 +19,21 @@ import { BirdCharacter, PigCharacter } from "./game/Characters";
 import { GameUI } from "./game/GameUI";
 import { GameOverlay } from "./game/GameOverlay";
 import { Background } from "./game/Background";
-import { type BirdType, BIRD_CONFIGS } from "../types/BirdTypes";
+import { type BirdType, type BirdConfig } from "../types/BirdTypes";
 import { BirdQueueDisplay } from "./game/BirdQueue";
 import type { FlightDataPoint } from "../types/FlightData";
 
 interface AngryBirdsGameProps {
   onFlightComplete?: (data: FlightDataPoint[], mass: number) => void;
+  customBirdConfig?: BirdConfig;
 }
 
-export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
+export const AngryBirdsGame = ({
+  onFlightComplete,
+  customBirdConfig,
+}: AngryBirdsGameProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fpsRef = useRef<HTMLDivElement>(null);
   const [score, setScore] = useState(0);
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const [birdsRemaining, setBirdsRemaining] = useState(0);
@@ -52,7 +57,6 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
   const pigStatesRef = useRef<Record<number, "idle" | "scared">>({});
 
   // Juice State
-  const [isShaking, setIsShaking] = useState(false);
   const [explosions, setExplosions] = useState<
     { id: number; x: number; y: number; color: string }[]
   >([]);
@@ -89,7 +93,6 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
     currentFlightData: [] as FlightDataPoint[],
     isCollidingFrame: false,
     // Callbacks for juice
-    onShake: () => {},
     onExplode: (_x: number, _y: number, _color: string) => {
       void _x;
       void _y;
@@ -104,12 +107,8 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
 
   // Update refs when state setters change (rarely)
   useEffect(() => {
-    gameStateRef.current.onShake = () => {
-      setIsShaking(true);
-      setTimeout(() => setIsShaking(false), 200);
-    };
     gameStateRef.current.onExplode = (x, y, color) => {
-      const id = Date.now() + Math.random();
+      const id = performance.now() + Math.random();
       setExplosions((prev) => [...prev, { id, x, y, color }]);
       // Cleanup after animation
       setTimeout(() => {
@@ -117,7 +116,7 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
       }, 1000);
     };
     gameStateRef.current.onPopup = (x, y, score) => {
-      const id = Date.now() + Math.random();
+      const id = performance.now() + Math.random();
       setPopups((prev) => [...prev, { id, x, y, score }]);
       // Cleanup after animation
       setTimeout(() => {
@@ -168,17 +167,58 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
       state.world.addBody(ground);
 
       // Load Level
-      const level = levels[currentLevelIndex] || levels[0];
+      let level = levels[currentLevelIndex] || levels[0];
+
+      // If custom bird config is present, use a sandbox level
+      if (customBirdConfig) {
+        level = {
+          birds: 99, // Infinite ammo basically
+          targets: [
+            // Sandbox Wall
+            { x: -2, y: 1, w: 1, h: 1, type: "stone" },
+            { x: -1, y: 1, w: 1, h: 1, type: "wood" },
+            { x: 0, y: 1, w: 1, h: 1, type: "ice" },
+            { x: 1, y: 1, w: 1, h: 1, type: "wood" },
+            { x: 2, y: 1, w: 1, h: 1, type: "stone" },
+
+            { x: -1.5, y: 2, w: 1, h: 1, type: "wood" },
+            { x: -0.5, y: 2, w: 1, h: 1, type: "pig" },
+            { x: 0.5, y: 2, w: 1, h: 1, type: "pig" },
+            { x: 1.5, y: 2, w: 1, h: 1, type: "wood" },
+
+            { x: -1, y: 3, w: 1, h: 1, type: "stone" },
+            { x: 0, y: 3, w: 1, h: 1, type: "ice" },
+            { x: 1, y: 3, w: 1, h: 1, type: "stone" },
+
+            { x: 0, y: 4, w: 1, h: 1, type: "pig" },
+          ],
+        };
+      }
 
       // Initialize bird queue
       // Create a copy of the array to avoid mutating the original level config
-      const birdTypes: BirdType[] = level.birdTypes
-        ? [...level.birdTypes]
-        : Array(level.birds).fill("red");
+      let birdTypes: BirdType[] = [];
+
+      if (customBirdConfig) {
+        // For custom mode, we don't use the queue array for types, but we need it for count
+        // We'll just fill it with "red" as placeholder, but the Ball creation will use customConfig
+        birdTypes = Array(5).fill("red");
+      } else {
+        birdTypes = level.birdTypes
+          ? [...level.birdTypes]
+          : Array(level.birds).fill("red");
+      }
 
       // Create first bird (remove it from queue first)
       const firstBirdType = birdTypes.shift() || "red";
-      state.ball = new Ball(state.startPos.x, state.startPos.y, firstBirdType);
+
+      // Use custom config if available, otherwise use the type string
+      state.ball = new Ball(
+        state.startPos.x,
+        state.startPos.y,
+        customBirdConfig || firstBirdType
+      );
+
       // Keep the bird parked in the sling until the player drags it.
       state.ball.body.setStatic(true);
       state.ball.body.position.set(state.startPos.x, state.startPos.y);
@@ -248,11 +288,6 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
         const damageThreshold = 8; // Increased threshold to prevent jitter damage
 
         if (relVel > damageThreshold) {
-          // Screen Shake on heavy impact
-          if (relVel > 20) {
-            state.onShake();
-          }
-
           // Bird Dizzy
           if (typeA === "bird" || typeB === "bird") {
             setIsDizzy(true);
@@ -336,7 +371,22 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
     };
     window.addEventListener("resize", handleResize);
 
+    let lastTime = performance.now();
+    let frames = 0;
+    let lastFpsUpdate = lastTime;
+
     const loop = () => {
+      const now = performance.now();
+      frames++;
+
+      if (now - lastFpsUpdate >= 1000) {
+        if (fpsRef.current) {
+          fpsRef.current.innerText = `FPS: ${frames}`;
+        }
+        frames = 0;
+        lastFpsUpdate = now;
+      }
+
       const state = gameStateRef.current;
 
       // Step physics
@@ -345,7 +395,7 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
 
       // Record flight data
       if (state.status === "flying" && state.ball) {
-        const t = (Date.now() - state.launchTime) / 1000;
+        const t = (performance.now() - state.launchTime) / 1000;
         state.currentFlightData.push({
           time: t,
           x: state.ball.body.position.x,
@@ -512,7 +562,7 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
           ball.body.position.x < -100 ||
           ball.body.position.y > canvas.height + 200; // Fell through floor
 
-        const isTimedOut = Date.now() - state.launchTime > 5000; // 5 seconds max flight time
+        const isTimedOut = performance.now() - state.launchTime > 5000; // 5 seconds max flight time
 
         if (isStopped || isOffScreen || isTimedOut) {
           // Flight complete - send stats
@@ -532,7 +582,7 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
             state.ball = new Ball(
               state.startPos.x,
               state.startPos.y,
-              nextBirdType
+              customBirdConfig || nextBirdType
             );
             state.ball.body.setStatic(true);
             state.ball.body.position.set(state.startPos.x, state.startPos.y);
@@ -688,9 +738,9 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
 
         const force = Vector2.sub(state.startPos, state.ball.body.position);
 
-        // Get bird type config for launch power multiplier
-        const birdConfig = BIRD_CONFIGS[state.ball.birdType];
-        const powerMultiplier = birdConfig.launchPowerMultiplier;
+        // Get launch power multiplier directly from the ball instance
+        // This ensures custom bird configs are respected
+        const powerMultiplier = state.ball.launchPowerMultiplier;
 
         // Scale it with bird-specific power
         const impulse = Vector2.mult(
@@ -700,7 +750,7 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
         state.ball.body.applyImpulse(impulse);
 
         state.status = "flying";
-        state.launchTime = Date.now();
+        state.launchTime = performance.now();
         setGameState("flying");
       }
     };
@@ -718,7 +768,7 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("resize", handleResize);
     };
-  }, [currentLevelIndex, resetKey, onFlightComplete]);
+  }, [currentLevelIndex, resetKey, onFlightComplete, customBirdConfig]);
 
   const resetGame = () => {
     if (gameState === "won") {
@@ -762,11 +812,7 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
       {/* Dynamic Background - Outside main container */}
       <Background />
 
-      <div
-        className={`relative w-full h-full overflow-hidden ${
-          isShaking ? "animate-shake" : ""
-        }`}
-      >
+      <div className="relative w-full h-full overflow-hidden">
         {/* Bird Queue Display - On ground next to Slingshot */}
         <div className="absolute left-[0%] bottom-[4%] z-40">
           <BirdQueueDisplay queue={birdQueue} />
@@ -907,6 +953,13 @@ export const AngryBirdsGame = ({ onFlightComplete }: AngryBirdsGameProps) => {
           totalLevels={levels.length}
           onReset={resetGame}
         />
+
+        <div
+          ref={fpsRef}
+          className="absolute top-4 right-4 z-50 font-mono font-bold text-green-400 bg-black/50 px-3 py-1 rounded-lg backdrop-blur-sm border border-white/10 pointer-events-none shadow-lg"
+        >
+          FPS: 60
+        </div>
 
         <GameOverlay gameState={gameState} score={score} onReset={resetGame} />
 
