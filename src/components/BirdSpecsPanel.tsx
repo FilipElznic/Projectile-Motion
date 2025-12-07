@@ -66,14 +66,6 @@ export const BirdSpecsPanel = () => {
           <BirdCard key={config.type} config={config} />
         ))}
       </div>
-
-      <div className="mt-8 p-4 bg-sky-500/10 rounded-xl border border-sky-500/20">
-        <h4 className="text-sky-400 font-bold text-sm mb-2">Did you know?</h4>
-        <p className="text-sky-200/70 text-xs leading-relaxed">
-          Heavier birds carry more momentum but require more force to launch.
-          Lighter birds fly faster but are more affected by drag (if enabled).
-        </p>
-      </div>
     </div>
   );
 };

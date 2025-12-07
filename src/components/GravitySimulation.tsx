@@ -3,9 +3,11 @@ import { Ball } from "../classes/Ball";
 import { PhysicsWorld, PhysicsBody } from "../classes/PhysicsEngine";
 import { Vector2 } from "../classes/Vector2";
 import { GAME_GRAVITY } from "./game/GameConstants";
+import { RotateCcw } from "lucide-react";
 
 export const GravitySimulation = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const resetRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -46,6 +48,8 @@ export const GravitySimulation = () => {
       ball.body.restitution = 0.8; // Bouncy
       world.addBody(ball.body);
     };
+
+    resetRef.current = init;
 
     const loop = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -114,5 +118,16 @@ export const GravitySimulation = () => {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="w-full h-full block" />;
+  return (
+    <div className="relative w-full h-full">
+      <canvas ref={canvasRef} className="w-full h-full block" />
+      <button
+        onClick={() => resetRef.current()}
+        className="absolute top-4 right-4 p-3 bg-white/10 backdrop-blur-md rounded-xl text-white hover:bg-white/20 transition-colors border border-white/20 shadow-lg group z-10"
+        title="Replay Simulation"
+      >
+        <RotateCcw className="w-6 h-6 group-hover:-rotate-180 transition-transform duration-500" />
+      </button>
+    </div>
+  );
 };

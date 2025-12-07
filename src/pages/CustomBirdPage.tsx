@@ -3,8 +3,7 @@ import { AngryBirdsGame } from "../components/AngryBirdsGame";
 import { SimulationStats } from "../components/stats/SimulationStats";
 import type { FlightDataPoint } from "../types/FlightData";
 import type { BirdConfig } from "../types/BirdTypes";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Play, Settings } from "lucide-react";
+import { Play, Settings } from "lucide-react";
 
 export const CustomBirdPage = () => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -31,7 +30,7 @@ export const CustomBirdPage = () => {
 
   if (isPlaying) {
     return (
-      <div className="min-h-screen bg-slate-900 p-4 flex flex-col">
+      <div className="p-4 flex flex-col">
         <header className="flex-none mb-4 flex items-center justify-between max-w-7xl mx-auto w-full z-10">
           <button
             onClick={() => setIsPlaying(false)}
@@ -63,15 +62,8 @@ export const CustomBirdPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 p-4 flex flex-col items-center justify-center">
+    <div className="p-4 flex flex-col items-center justify-center h-full">
       <div className="w-full max-w-2xl">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white font-bold mb-8 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" /> Back to Home
-        </Link>
-
         <div className="bg-slate-800 rounded-[2rem] p-8 md:p-12 border border-white/10 shadow-2xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-black text-white mb-4">
@@ -136,7 +128,7 @@ export const CustomBirdPage = () => {
 
               <div>
                 <div className="flex justify-between text-white font-bold mb-2">
-                  <span>Launch Power</span>
+                  <span></span>
                   <span>{Math.round(config.launchPowerMultiplier * 100)}%</span>
                 </div>
                 <input

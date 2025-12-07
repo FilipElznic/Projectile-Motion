@@ -189,37 +189,6 @@ export const DragSimulation = () => {
       ctx.strokeStyle = "#1f1720";
       ctx.lineWidth = 3;
       ctx.stroke();
-
-      // HUD
-      ctx.fillStyle = "rgba(0,0,0,0.45)";
-      ctx.fillRect(24, 24, 220, 80);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "600 16px 'Space Grotesk', sans-serif";
-      const speed = state.simulator.velocity.mag();
-      const angle = Math.atan2(
-        -state.simulator.velocity.y,
-        state.simulator.velocity.x
-      );
-      ctx.fillText(`Speed: ${speed.toFixed(0)} px/s`, 40, 55);
-      ctx.fillText(`Angle: ${(angle * (180 / Math.PI)).toFixed(1)}°`, 40, 85);
-
-      if (!state.isDragging && speed < 5) {
-        ctx.fillStyle = "rgba(255,255,255,0.75)";
-        ctx.font = "600 18px 'Space Grotesk', sans-serif";
-        ctx.textAlign = "center";
-
-        ctx.textAlign = "left";
-      }
-
-      if (state.isDragging) {
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
-        ctx.font = "600 14px 'Space Grotesk', sans-serif";
-        ctx.fillText(
-          `Launch power: ${state.dragVector.mag().toFixed(0)} px`,
-          ballPos.x + radius + 12,
-          ballPos.y - 10
-        );
-      }
     };
 
     const loop = (timestamp: number) => {

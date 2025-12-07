@@ -3,8 +3,6 @@ import { AngryBirdsGame } from "../components/AngryBirdsGame";
 import { SimulationStats } from "../components/stats/SimulationStats";
 import { BirdSpecsPanel } from "../components/BirdSpecsPanel";
 import type { FlightDataPoint } from "../types/FlightData";
-import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 
 export const SimulationPage = () => {
   const [flightData, setFlightData] = useState<FlightDataPoint[]>([]);
@@ -19,21 +17,7 @@ export const SimulationPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-900 p-4 flex flex-col">
-      <header className="flex-none mb-4 flex items-center justify-between max-w-7xl mx-auto w-full z-10">
-        <Link
-          to="/"
-          className="flex items-center gap-2 text-white/80 hover:text-white font-bold transition-colors bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm"
-        >
-          <ArrowLeft className="w-5 h-5" /> Back to Home
-        </Link>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-wider drop-shadow-lg">
-          SIMULATION MODE
-        </h1>
-        <div className="w-[100px] hidden md:block"></div>{" "}
-        {/* Spacer for centering */}
-      </header>
-
+    <div className="p-4 flex flex-col">
       <div className="flex-none flex items-start justify-center w-full mb-12">
         <div className="w-full max-w-[95rem] flex flex-col lg:flex-row gap-6 items-stretch h-[85vh] min-h-[600px]">
           <main className="flex-1 bg-[#46C6F6] rounded-[2rem] border-8 border-white/20 shadow-2xl overflow-hidden relative ring-1 ring-white/10">
