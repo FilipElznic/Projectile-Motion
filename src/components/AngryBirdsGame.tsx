@@ -24,7 +24,12 @@ import { BirdQueueDisplay } from "./game/BirdQueue";
 import type { FlightDataPoint } from "../types/FlightData";
 
 interface AngryBirdsGameProps {
-  onFlightComplete?: (data: FlightDataPoint[], mass: number) => void;
+  onFlightComplete?: (
+    data: FlightDataPoint[],
+    mass: number,
+    color: string,
+    launchForce: number
+  ) => void;
   customBirdConfig?: BirdConfig;
 }
 
@@ -70,6 +75,12 @@ export const AngryBirdsGame = ({
   const [isDizzy, setIsDizzy] = useState(false);
   const [birdQueue, setBirdQueue] = useState<BirdType[]>([]);
 
+  const onFlightCompleteRef = useRef(onFlightComplete);
+
+  useEffect(() => {
+    onFlightCompleteRef.current = onFlightComplete;
+  }, [onFlightComplete]);
+
   // Game state refs to be accessible inside loop
   const gameStateRef = useRef({
     world: new PhysicsWorld(),
@@ -88,6 +99,7 @@ export const AngryBirdsGame = ({
       | "lost",
     launchTime: 0,
     gravityEnabled: false,
+    launchForce: 0,
     gravityTimeout: null as number | null,
     birdQueue: [] as BirdType[],
     currentFlightData: [] as FlightDataPoint[],
@@ -566,8 +578,13 @@ export const AngryBirdsGame = ({
 
         if (isStopped || isOffScreen || isTimedOut) {
           // Flight complete - send stats
-          if (onFlightComplete && state.ball) {
-            onFlightComplete(state.currentFlightData, state.ball.body.mass);
+          if (onFlightCompleteRef.current && state.ball) {
+            onFlightCompleteRef.current(
+              state.currentFlightData,
+              state.ball.body.mass,
+              state.ball.color,
+              state.launchForce
+            );
           }
           state.currentFlightData = [];
 
@@ -737,6 +754,7 @@ export const AngryBirdsGame = ({
         state.ball.body.setStatic(false); // Wake up
 
         const force = Vector2.sub(state.startPos, state.ball.body.position);
+        state.launchForce = force.mag();
 
         // Get launch power multiplier directly from the ball instance
         // This ensures custom bird configs are respected
@@ -768,7 +786,7 @@ export const AngryBirdsGame = ({
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("resize", handleResize);
     };
-  }, [currentLevelIndex, resetKey, onFlightComplete, customBirdConfig]);
+  }, [currentLevelIndex, resetKey, customBirdConfig]);
 
   const resetGame = () => {
     if (gameState === "won") {

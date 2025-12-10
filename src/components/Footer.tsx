@@ -50,8 +50,7 @@ export const Footer = () => {
       </div>
 
       <div className="mt-16 text-center text-slate-600 font-bold text-sm">
-        © {new Date().getFullYear()} Projectile Motion Simulator. Built with
-        React & TypeScript.
+        © {new Date().getFullYear()} Projectile Motion Simulator. Filip Elznic
       </div>
     </footer>
   );

@@ -3,15 +3,7 @@ import { DragSimulation } from "../components/DragSimulation";
 import { Button3D } from "../components/Button3D";
 import { Card } from "../components/Card";
 import { MathBlock } from "../components/MathBlock";
-import {
-  Play,
-  Target,
-  Zap,
-  Settings,
-  Star,
-  ArrowDown,
-  Move,
-} from "lucide-react";
+import { Play, Target, Settings, Star, ArrowDown, Move } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BirdCharacter } from "../components/game/Characters";
 
@@ -265,11 +257,11 @@ export const LandingPage = () => {
               </div>
               <div>
                 <h3 className="text-2xl font-black text-slate-700 mb-2">
-                  Precision Physics
+                  Simulation Mode
                 </h3>
                 <p className="text-slate-500 font-medium text-lg leading-relaxed">
-                  Experience real-time vector mathematics. Adjust your angle and
-                  velocity to hit targets with pinpoint accuracy.
+                  Jump into a full physics sandbox. Launch birds at structures
+                  and watch them crumble with realistic collisions.
                 </p>
               </div>
             </div>
@@ -278,19 +270,19 @@ export const LandingPage = () => {
           <Card rotate="right" variant="wood">
             <div className="h-full flex flex-col justify-between">
               <div className="bg-[#5C4033]/10 p-4 rounded-2xl w-fit mb-4">
-                <Zap className="w-8 h-8" strokeWidth={3} />
+                <Settings className="w-8 h-8" strokeWidth={3} />
               </div>
               <div>
-                <h3 className="text-2xl font-black mb-2">Power Ups</h3>
+                <h3 className="text-2xl font-black mb-2">Custom Birds</h3>
                 <p className="font-medium opacity-80">
-                  Unlock special projectiles and gravity modifiers!
+                  Design your own projectile! Adjust mass, size, and power.
                 </p>
               </div>
             </div>
           </Card>
 
           <Card rotate="right" variant="glass" className="md:col-span-1">
-            <div className="text-center py-8">
+            <div className="text-center my-auto py-8">
               <div className="text-6xl font-black text-[#D62412] mb-2">9.8</div>
               <div className="text-slate-600 font-bold uppercase tracking-widest">
                 Gravity (m/s²)

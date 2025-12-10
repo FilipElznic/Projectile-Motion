@@ -2,19 +2,45 @@ import { useState, useCallback } from "react";
 import { AngryBirdsGame } from "../components/AngryBirdsGame";
 import { SimulationStats } from "../components/stats/SimulationStats";
 import { BirdSpecsPanel } from "../components/BirdSpecsPanel";
-import type { FlightDataPoint } from "../types/FlightData";
+import { FlightHistoryGraph } from "../components/stats/FlightHistoryGraph";
+import type { FlightDataPoint, FlightHistoryEntry } from "../types/FlightData";
+import { Trash2 } from "lucide-react";
 
 export const SimulationPage = () => {
   const [flightData, setFlightData] = useState<FlightDataPoint[]>([]);
   const [birdMass, setBirdMass] = useState(1);
+  const [flightHistory, setFlightHistory] = useState<FlightHistoryEntry[]>([]);
 
   const handleFlightComplete = useCallback(
-    (data: FlightDataPoint[], mass: number) => {
+    (
+      data: FlightDataPoint[],
+      mass: number,
+      color: string,
+      launchForce: number
+    ) => {
       setFlightData(data);
       setBirdMass(mass);
+
+      const newEntry: FlightHistoryEntry = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        data,
+        config: {
+          mass,
+          color,
+          label: `Flight ${flightHistory.length + 1} (${launchForce.toFixed(
+            0
+          )}N)`,
+          launchForce,
+        },
+      };
+
+      setFlightHistory((prev) => [...prev, newEntry]);
     },
-    []
+    [flightHistory.length]
   );
+
+  const clearHistory = () => setFlightHistory([]);
 
   return (
     <div className="p-4 flex flex-col">
@@ -38,8 +64,25 @@ export const SimulationPage = () => {
       </div>
 
       {/* Statistics Section */}
-      <div className="w-full bg-slate-900/50 backdrop-blur-sm">
+      <div className="w-full bg-slate-900/50 backdrop-blur-sm p-8 space-y-12">
         <SimulationStats flightData={flightData} birdMass={birdMass} />
+
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-3xl font-black text-white flex items-center gap-3">
+              <span className="text-[#46C6F6]">📈</span> Flight History
+            </h2>
+            {flightHistory.length > 0 && (
+              <button
+                onClick={clearHistory}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded-lg transition-colors border border-red-500/30"
+              >
+                <Trash2 className="w-4 h-4" /> Clear History
+              </button>
+            )}
+          </div>
+          <FlightHistoryGraph history={flightHistory} />
+        </div>
       </div>
     </div>
   );
